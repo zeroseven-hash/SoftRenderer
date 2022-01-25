@@ -36,6 +36,12 @@ namespace TinyMath
 		inline Vector(T x, T y) : x_(x), y_(y) {}
 		inline Vector(const Vector<2, T>& v) : x_(v.x_), y_(v.y_) {}
 		inline Vector(const T* ptr) : x_(ptr[0]), y_(ptr[1]) {}
+
+		inline T Cross(const Vector<2, T>& other)const
+		{
+			return x_*other.y_-y_*other.x_;
+		}
+		
 		inline const T& operator[](size_t i)const { assert(i < 2); return m_[i]; }
 		inline T& operator[](size_t i) { assert(i < 2); return m_[i]; }
 
@@ -54,7 +60,7 @@ namespace TinyMath
 		};
 		inline Vector() :x_(T()), y_(T()), z_(T()) {}
 		inline Vector(T x, T y, T z) : x_(x), y_(y), z_(z) {}
-		inline Vector(const Vector<2, T>& v, T z) : x(v.x_), y_(v.y_), z_(z) {}
+		inline Vector(const Vector<2, T>& v, T z) : x_(v.x_), y_(v.y_), z_(z) {}
 		inline Vector(const Vector<3, T>& v) : x_(v.x_), y_(v.y_), z_(v.z_) {}
 		inline Vector(const T* ptr) : x_(ptr[0]), y_(ptr[1]), z_(ptr[2]) {}
 		inline const T& operator[](size_t i)const { assert(i < 3); return m_[i]; }
@@ -79,12 +85,19 @@ namespace TinyMath
 		inline Vector(const Vector<3, T>& v, T w) : x_(v.x_), y_(v.y_), z_(v.z_), w_(w) {}
 		inline Vector(const Vector<4, T>& v) : x_(v.x_), y_(v.y_), z_(v.z_), w_(v.w_) {}
 		inline Vector(const T* ptr) : x_(ptr[0]), y_(ptr[1]), z_(ptr[2]), w_(ptr[3]) {}
+
+		inline Vector<4, T> Cross(const Vector<4, T>& other)const
+		{
+			return Vector<4, T>(y_ * other.z_ - z_ * other.y_, z_ * other.x_ - x_ * other.z_, x_ * other.y_ - y_ * other.x_, w_);
+		}
+
+
 		inline const T& operator[](size_t i)const { assert(i < 4); return m_[i]; }
 		inline T& operator[](size_t i) { assert(i < 4); return m_[i]; }
 
+		
 		inline operator Vector<2, T>()const { return Vector<2, T>(x_, y_); }
 		inline operator Vector<3, T>()const { return Vector<3, T>(x_, y_, w_); }
-
 	};
 
 
@@ -237,4 +250,23 @@ namespace TinyMath
 	typedef Vector<2, int> Vec2i;
 	typedef Vector<3, int> Vec3i;
 	typedef Vector<4, int> Vec4i;
+
+
+
+
+	///Utils funtion
+	template<typename T>
+	inline T Between(T xmin, T xmax, T x)
+	{
+		return std::min<T>(std::max<T>(xmin, x), xmax);
+	}
+
+
+	// 判断一条边是不是三角形的左上边 (Top-Left Edge)
+	inline bool IsTopLeft(const Vec2i& a, const Vec2i& b)
+	{
+		return ((a.y_ == b.y_) && (a.x_ < b.x_)) || (a.y_ > b.y_);
+	}
+
+	
 }

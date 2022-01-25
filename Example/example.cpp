@@ -1,6 +1,7 @@
 #include<glad/glad.h>
 #include <GLFW/glfw3.h>
 #include<memory>
+#include<cstring>
 #include<SoftRenderer.h>
 int main(void)
 {
@@ -22,26 +23,36 @@ int main(void)
     glfwMakeContextCurrent(window);
     gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 
-    unsigned char* bg = new unsigned char[640 * 480 * 4];
-    for (int i = 0; i < 480; i++)
-    {
-        for (int j = 0; j < 640*4; j+=4)
-        {
-            bg[640 * 4 * i + j+0] = 0x00;
-            bg[640 * 4 * i + j+1] = 0x00;
-            bg[640 * 4 * i + j+2] = 0xff;
-            bg[640 * 4 * i + j+3] = 0xff;
-        }
-    }
+    struct { TinyMath::Vec4f pos; TinyMath::Vec4f color; } vs_input[3] = {
+		{ {  0.0,  0.7, 0.90, 1}, {1, 0, 0, 1} },
+		{ { -0.6, -0.2, 0.01, 1}, {0, 1, 0, 1} },
+		{ { +0.6, -0.2, 0.01, 1}, {0, 0, 1, 1} },
+    };
+    const int VARYING_COLOR = 0;
+    Shader shader;
+    
+    shader.vertex_shader_ = [&](int index, ShaderContext& output)->TinyMath::Vec4f {
+        output.varying_vec4f_[VARYING_COLOR] = vs_input[index].color;
+        return vs_input[index].pos;
+    };
+    shader.fragment_shader_ = [&](ShaderContext& input)->TinyMath::Vec4f {
+        return input.varying_vec4f_[VARYING_COLOR];
+    };
     Renderer renderer(640, 480);
+
+
+   
+   
+
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
     {
         /* Render here */
         //glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
         //glClear(GL_COLOR_BUFFER_BIT);
-        renderer.Clear(COLOR_BUFFER_BIT);
-        glDrawPixels(640,480, GL_RGBA, GL_UNSIGNED_BYTE, renderer.get_canvas());
+        renderer.Clear(COLOR_BUFFER_BIT|DEPTH_BUFFER_BIT);
+        renderer.DrawTriangle(shader);
+        glDrawPixels(640, 480, GL_RGBA, GL_UNSIGNED_BYTE, renderer.get_canvas());
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
 

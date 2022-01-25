@@ -7,11 +7,13 @@
 #include"Math.h"
 
 typedef int BufferFlag;
+
 enum BufferFlag_
 {
 	DEPTH_BUFFER_BIT=Bit(0),
 	COLOR_BUFFER_BIT=Bit(1)
 };
+
 struct ShaderContext
 {
 	std::map<int, float> varying_float_;    // 浮点数 varying 列表
@@ -20,23 +22,38 @@ struct ShaderContext
 	std::map<int, TinyMath::Vec4f> varying_vec4f_;    // 四维矢量 varying 列表
 };
 
+typedef std::function<TinyMath::Vec4f(int index, ShaderContext&)> VertexShader;
+typedef std::function<TinyMath::Vec4f(ShaderContext&)> FragmentShader;
+
+struct Shader
+{
+	VertexShader vertex_shader_;
+	FragmentShader fragment_shader_;
+	//TODO: geometry shader;
+};
+
 struct Color
 {
 	uint8_t r_ = 0, g_ = 0, b_ = 0, a_ = 0;
 	Color() = default;
 	Color(uint32_t r, uint32_t g, uint32_t b, uint32_t a) :r_(r), g_(g), b_(b), a_(a) {}
+	Color(const TinyMath::Vec4f& color)
+	{
+		r_ = (uint8_t)TinyMath::Between(0, 255, (int)(color.r_ * 255));
+		g_ = (uint8_t)TinyMath::Between(0, 255, (int)(color.g_ * 255));
+		b_ = (uint8_t)TinyMath::Between(0, 255, (int)(color.b_ * 255));
+		a_ = (uint8_t)TinyMath::Between(0, 255, (int)(color.a_ * 255));
+
+	}
 };
 struct Vertex
 {
 	ShaderContext context_;
 	float rhw_;
 	TinyMath::Vec4f pos_;
-	TinyMath::Vec2f center;		//像素中心 float
-	TinyMath::Vec2i coords;		//像素坐标
+	TinyMath::Vec2f center_;		//像素中心 float
+	TinyMath::Vec2i coords_;		//像素坐标
 };
-
-typedef std::function<TinyMath::Vec4f(int index, ShaderContext&)> VertexShader;
-typedef std::function<TinyMath::Vec4f(ShaderContext&)> FragmentShader;
 
 
 class Canvas
@@ -54,7 +71,7 @@ public:
 	}
 	inline ~Canvas() { if (m_bits)delete[] m_bits; m_bits = nullptr; }
 
-	inline void Fill(Color color)
+	inline void Fill(const Color& color)
 	{
 		for (int i = 0; i < m_height; i++)
 		{
@@ -62,6 +79,11 @@ public:
 			for (int j = 0; j < m_width; j++, row+=4)
 				memcpy(row, &color, sizeof(Color));
 		}
+	}
+public:
+	void set_pixel(int x, int y,const Color& color)
+	{
+		memcpy(m_bits + y * m_width * m_channel + x * m_channel, &color, sizeof(Color));
 	}
 
 public:
@@ -98,11 +120,12 @@ public:
 	inline ~Renderer(){}
 public:
 	void Clear(BufferFlag flag);
-
+	void DrawTriangle(const Shader& shader);
 public:
-	int get_width() { return m_width; }
-	int get_height() { return m_width; }
-	uint8_t* get_canvas() { return m_canvas->get_bits(); }
+	inline int get_width()const  { return m_width; }
+	inline int get_height()const  { return m_height; }
+	inline uint8_t* get_canvas()const  { return m_canvas->get_bits(); }
+
 protected:
 	void Init(int width,int height);
 	void Reset();
@@ -122,9 +145,6 @@ protected:
 	int m_max_x;
 	int m_max_y;
 
-
-	VertexShader m_vertex_shader;
-	FragmentShader m_fragment_shader;
 
 	bool m_render_line;
 	bool m_render_pixel;
