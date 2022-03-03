@@ -16,7 +16,10 @@ set_property(TARGET glfw PROPERTY FOLDER "dependencies")
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/Extern/GLAD)
 set_property(TARGET GLAD PROPERTY FOLDER "dependencies")
 
-add_executable(Example example.cpp)
-target_link_libraries(Example glfw GLAD SoftRenderer)
+add_executable(triangle triangle.cpp)
+add_executable(texture texture.cpp)
+target_link_libraries(triangle glfw GLAD SoftRenderer)
+target_link_libraries(texture glfw GLAD SoftRenderer)
+
 
 

@@ -1,5 +1,77 @@
+#define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+
 #include"Renderer.h"
 
+#include"Timer.h"
+#include"stb_image.h"
+#include"stb_image_write.h"
+
+
+void Canvas::LoadFile(const char* filename)
+{
+	if (!m_bits)
+		delete[] m_bits;
+	stbi_set_flip_vertically_on_load(true);
+	m_bits = stbi_load(filename, &m_width, &m_height, &m_channel, 0);
+}
+
+void Canvas::SaveFileBMP(const char* filename)
+{
+	stbi_write_bmp(filename, m_width, m_height, m_channel, m_bits);
+}
+
+Color Canvas::Sample2D(const TinyMath::Vec2f& tex_coords)
+{
+	
+	TinyMath::Vec2f tex;
+	tex.x_ = tex_coords.x_ * m_width+0.5;
+	tex.y_ = tex_coords.y_ * m_height+0.5;
+	//左下，右下，左上，右上
+	struct {
+		TinyMath::Vec2i coords_;
+		TinyMath::Vec2f pos_;
+	}vs[4];
+
+	int integer[2] = { (int)tex.x_ ,(int)tex.y_ };
+	for (int i = 0;i < 2;i++)
+	{
+		if (tex.m_[i] - integer[i] > 0.5f)
+		{
+			vs[0].pos_.m_[i] = TinyMath::Between(0, i == 0 ? m_width-1 : m_height-1, integer[i]) + 0.5f;
+			vs[0].coords_.m_[i] = TinyMath::Between(0, i == 0 ? m_width-1 : m_height-1, integer[i]);
+		}
+		else
+		{
+			vs[0].pos_.m_[i] = TinyMath::Between(0, i == 0 ? m_width-1 : m_height-1, integer[i] - 1) + 0.5f;
+			vs[0].coords_.m_[i] = TinyMath::Between(0, i == 0 ? m_width-1 : m_height-1, integer[i] - 1);
+		}
+	}
+
+	int dir[3][2] = { {1,0},{0,1},{1,1} };
+	for (int i = 1;i < 4;i++)
+	{
+		vs[i].pos_.x_ = vs[0].pos_.x_ + dir[i-1][0];
+		vs[i].pos_.y_ = vs[0].pos_.y_ + dir[i-1][1];
+
+		vs[i].coords_.x_ = vs[0].coords_.x_ + dir[i-1][0];
+		vs[i].coords_.y_ = vs[0].coords_.y_ + dir[i-1][1];
+	}
+
+	Color color[4];
+	for (int i = 0;i < 4;i++)
+	{
+		color[i] = get_pixel(vs[i].coords_.x_, vs[i].coords_.y_);
+	}
+	float dy1x1x2 = tex.x_ - vs[0].pos_[0];
+	float dy2x1x2 = tex.x_ - vs[2].pos_[0];
+	Color c1 = LinearInterp(color[0], color[1], dy1x1x2);
+	Color c2 = LinearInterp(color[2], color[3],dy2x1x2);
+
+	float dy1dy2 = tex.y_ - vs[0].pos_[1];
+	Color res = LinearInterp(c1, c2, dy1dy2);
+	return res;
+}
 void Renderer::Init(int width, int height)
 {
 	Reset();
@@ -49,8 +121,49 @@ void Renderer::Clear(BufferFlag flag)
 		if (m_canvas) m_canvas->Fill(m_color_bg);
 	}
 }
-
-void Renderer::DrawTriangle(const Shader& shader)
+void Canvas::DrawLine(int x1, int y1, int x2, int y2, const Color& color)
+{
+	//bresenham 画线算法，由于x，y都在第一象限，所以只有两种情况
+	int x, y;
+	if (x1 == x2 && y1 == y2) {
+		set_pixel(x1, y1, color);
+		return;
+	}
+	else if (x1 == x2) {
+		int inc = (y1 <= y2) ? 1 : -1;
+		for (y = y1; y != y2; y += inc) set_pixel(x1, y, color);
+		set_pixel(x2, y2, color);
+	}
+	else if (y1 == y2) {
+		int inc = (x1 <= x2) ? 1 : -1;
+		for (x = x1; x != x2; x += inc) set_pixel(x, y1, color);
+		set_pixel(x2, y2, color);
+	}
+	else {
+		int dx = (x1 < x2) ? x2 - x1 : x1 - x2;
+		int dy = (y1 < y2) ? y2 - y1 : y1 - y2;
+		int rem = 0;
+		if (dx >= dy) {	//slope <1;
+			if (x2 < x1) x = x1, y = y1, x1 = x2, y1 = y2, x2 = x, y2 = y;
+			for (x = x1, y = y1; x <= x2; x++) {
+				set_pixel(x, y, color);
+				rem += dy;
+				if (rem >= dx) { rem -= dx; y += (y2 >= y1) ? 1 : -1; set_pixel(x, y, color); }
+			}
+			set_pixel(x2, y2, color);
+		}
+		else {
+			if (y2 < y1) x = x1, y = y1, x1 = x2, y1 = y2, x2 = x, y2 = y;
+			for (x = x1, y = y1; y <= y2; y++) {
+				set_pixel(x, y, color);
+				rem += dx;
+				if (rem >= dy) { rem -= dy; x += (x2 >= x1) ? 1 : -1; set_pixel(x, y, color); }
+			}
+			set_pixel(x2, y2, color);
+		}
+	}
+}
+void Renderer::DrawTriangle(const Shader& shader, uint32_t* indices)
 {
 	if (m_canvas == nullptr) return;
 	for (int k = 0;k < 3;k++)
@@ -61,12 +174,15 @@ void Renderer::DrawTriangle(const Shader& shader)
 		v.context_.varying_vec3f_.clear();
 		v.context_.varying_vec4f_.clear();
 
-		v.pos_ = shader.vertex_shader_(k, v.context_);
+		v.pos_ = shader.vertex_shader_(indices[k], v.context_);
 
-		//裁剪 pos(nx,ny,n^2,n);x y should between [-1,1],n could be near or far
+		//裁剪 pos(nx,ny,n^2,z);x y should between [-1,1],n could be near or far
+
+		//w_>0;
 		float w = v.pos_.w_;
 		if (w == 0.0f)return;
-		if (v.pos_.z_<0.0f || v.pos_.z_>w)return;
+
+		if (v.pos_.z_<-w || v.pos_.z_>w)return;
 		if (v.pos_.x_<-w || v.pos_.x_>w)return;
 		if (v.pos_.y_<-w || v.pos_.y_>w)return;
 
@@ -76,11 +192,11 @@ void Renderer::DrawTriangle(const Shader& shader)
 
 		//x:[-1,1] to [0,width-1],y:[-1,1] to [0,height-1];
 		//	0.5*width       0	      width*0.5		    x     (x+1.0f)*0.5*width
-		//	  0	       height*0.5*   height*0.5    *    y  = (y+1.0f)*0.5*height
+		//	  0	       height*0.5    height*0.5    *    y  = (y+1.0f)*0.5*height
 		//	  0             0            0	        	1 				1
 		v.center_.x_ = (v.pos_.x_ + 1.0f) * m_width * 0.5f;
-		//v.center_.y_ = (v.pos_.y_ + 1.0f) * m_height * 0.5f;
-		v.center_.y_ = (1.0f-v.pos_.y_) * m_height * 0.5f;
+		v.center_.y_ = (v.pos_.y_ + 1.0f) * m_height * 0.5f;
+		
 
 		v.coords_.x_ = (int)(v.center_.x_ + 0.5f);
 		v.coords_.y_ = (int)(v.center_.y_ + 0.5f);
@@ -99,6 +215,12 @@ void Renderer::DrawTriangle(const Shader& shader)
 		}
 	}
 	//TODO:绘制线框
+	if (m_render_line)
+	{
+		m_canvas->DrawLine(m_vertex[0].coords_.x_, m_vertex[0].coords_.y_, m_vertex[1].coords_.x_, m_vertex[1].coords_.y_,m_color_fg);
+		m_canvas->DrawLine(m_vertex[0].coords_.x_, m_vertex[0].coords_.y_, m_vertex[2].coords_.x_, m_vertex[2].coords_.y_,m_color_fg);
+		m_canvas->DrawLine(m_vertex[2].coords_.x_, m_vertex[2].coords_.y_, m_vertex[1].coords_.x_, m_vertex[1].coords_.y_,m_color_fg);
+	}
 	if (!m_render_pixel) return;
 
 	TinyMath::Vec4f v01 = m_vertex[1].pos_ - m_vertex[0].pos_;
@@ -106,7 +228,7 @@ void Renderer::DrawTriangle(const Shader& shader)
 	TinyMath::Vec4f normal = v01.Cross(v02);
 
 	Vertex* vs[3] = { &m_vertex[0],&m_vertex[1] ,&m_vertex[2] };
-	if (normal.z_ > 0.0f)
+	if (normal.z_ < 0.0f)
 		std::swap(vs[1], vs[2]);
 	else if (normal.z_ == 0.0f)
 		return;
@@ -127,7 +249,7 @@ void Renderer::DrawTriangle(const Shader& shader)
 		TinyMath::Vec2f pixel = { (float)x + 0.5f,(float)y + 0.5f };
 
 		// Edge Equation
-				// 使用整数避免浮点误差，同时因为是左手系，所以符号取反
+		// 使用整数避免浮点误差，同时因为是左手系，所以符号取反
 		int E01 = -(x - p[0].x_) * (p[1].y_ - p[0].y_) + (y - p[0].y_) * (p[1].x_ - p[0].x_);
 		int E12 = -(x - p[1].x_) * (p[2].y_ - p[1].y_) + (y - p[1].y_) * (p[2].x_ - p[1].x_);
 		int E20 = -(x - p[2].x_) * (p[0].y_ - p[2].y_) + (y - p[2].y_) * (p[0].x_ - p[2].x_);
@@ -138,7 +260,7 @@ void Renderer::DrawTriangle(const Shader& shader)
 		if (E01 < (TopLeft01 ? 0 : 1)) continue;   // 在第一条边后面
 		if (E12 < (TopLeft12 ? 0 : 1)) continue;   // 在第二条边后面
 		if (E20 < (TopLeft20 ? 0 : 1)) continue;   // 在第三条边后面
-
+	
 
 		// 三个端点到当前点的矢量
 		TinyMath::Vec2f s0 = vs[0]->center_ - pixel;
@@ -149,7 +271,7 @@ void Renderer::DrawTriangle(const Shader& shader)
 		float a = std::abs(s1.Cross(s2));    // 子三角形 Px-P1-P2 面积
 		float b = std::abs(s2.Cross(s0));    // 子三角形 Px-P2-P0 面积
 		float c = std::abs(s0.Cross(s1));    // 子三角形 Px-P0-P1 面积
-		float s = a + b + c;                    // 大三角形 P0-P1-P2 面积
+		float s = a + b + c;                 // 大三角形 P0-P1-P2 面积
 
 		if (s == 0.0f) continue;
 
@@ -160,6 +282,11 @@ void Renderer::DrawTriangle(const Shader& shader)
 
 		//深度以及其倒数在可以直接使用重心插值
 		float rhw = vs[0]->rhw_ * a + vs[1]->rhw_ * b + vs[2]->rhw_ * c;
+
+		//depth_buffer数组下标和x,y相反
+		if (rhw < m_depth_buffer[y][x])continue;
+		m_depth_buffer[y][x] = rhw;
+		
 		float w = 1.0f / ((rhw != 0.0f) ? rhw : 1.0f);
 
 		//透视正确插值
@@ -208,6 +335,12 @@ void Renderer::DrawTriangle(const Shader& shader)
 
 		TinyMath::Vec4f color = shader.fragment_shader_(input);
 		m_canvas->set_pixel(x, y, Color(color));
+	}
+	if (m_render_line)
+	{
+		m_canvas->DrawLine(vs[0]->coords_.x_, vs[0]->coords_.y_, vs[1]->coords_.x_, vs[1]->coords_.y_, m_color_fg);
+		m_canvas->DrawLine(vs[0]->coords_.x_, vs[0]->coords_.y_, vs[2]->coords_.x_, vs[2]->coords_.y_, m_color_fg);
+		m_canvas->DrawLine(vs[2]->coords_.x_, vs[2]->coords_.y_, vs[1]->coords_.x_, vs[1]->coords_.y_, m_color_fg);
 	}
 
 }

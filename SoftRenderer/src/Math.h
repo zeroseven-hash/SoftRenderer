@@ -1,5 +1,6 @@
 #pragma once
 #include<initializer_list>
+#include<cmath>
 #include<assert.h>
 
 
@@ -63,6 +64,12 @@ namespace TinyMath
 		inline Vector(const Vector<2, T>& v, T z) : x_(v.x_), y_(v.y_), z_(z) {}
 		inline Vector(const Vector<3, T>& v) : x_(v.x_), y_(v.y_), z_(v.z_) {}
 		inline Vector(const T* ptr) : x_(ptr[0]), y_(ptr[1]), z_(ptr[2]) {}
+
+		inline Vector<3, T> Cross(const Vector<3, T>& other)const
+		{
+			return Vector<3, T>(y_ * other.z_ - z_ * other.y_, z_ * other.x_ - x_ * other.z_, x_ * other.y_ - y_ * other.x_);
+		}
+
 		inline const T& operator[](size_t i)const { assert(i < 3); return m_[i]; }
 		inline T& operator[](size_t i) { assert(i < 3); return m_[i]; }
 		inline operator Vector<2, T>()const { return Vector<2, T>(x_, y_); }
@@ -251,16 +258,59 @@ namespace TinyMath
 	typedef Vector<3, int> Vec3i;
 	typedef Vector<4, int> Vec4i;
 
+	//vector function
+	// = |a| ^ 2
+	template<size_t N, typename T>
+	inline T VectorLengthSquare(const Vector<N, T>& a) {
+		T sum = 0;
+		for (size_t i = 0; i < N; i++) sum += a[i] * a[i];
+		return sum;
+	}
 
+	// = |a|
+	template<size_t N, typename T>
+	inline T VectorLength(const Vector<N, T>& a) {
+		return sqrt(VectorLengthSquare(a));
+	}
 
+	// = |a| , 特化 float 类型，使用 sqrtf
+	template<size_t N>
+	inline float VectorLength(const Vector<N, float>& a) {
+		return sqrtf(VectorLengthSquare(a));
+	}
 
-	///Utils funtion
+	// = a / |a|
+	template<size_t N, typename T>
+	inline Vector<N, T> Normalize(const Vector<N, T>& a) {
+		return a / VectorLength(a);
+	}
+
+	// dot
+	template<size_t N, typename T>
+	inline T VectorDot(const Vector<N, T>& a, const Vector<N, T>b)
+	{
+		T sum = 0;
+		for (size_t i = 0; i < N; i++) sum += a[i] * b[i];
+		return sum;
+	}
+
+	///Utils function
 	template<typename T>
 	inline T Between(T xmin, T xmax, T x)
 	{
 		return std::min<T>(std::max<T>(xmin, x), xmax);
 	}
 
+	template<size_t N,typename T>
+	inline  Vector<N, T> LinerInterpolation(const Vector<N, T>& v1, const Vector<N, T>& v2, float t)
+	{
+		Vector<N,T> res;
+		for (int i = 0;i < N;i++)
+		{
+			res.m_[i] = v1.m_[i] + (v2.m_[i] - v1.m_[i]) * t;
+		}
+		return res;
+	}
 
 	// 判断一条边是不是三角形的左上边 (Top-Left Edge)
 	inline bool IsTopLeft(const Vec2i& a, const Vec2i& b)
@@ -268,5 +318,331 @@ namespace TinyMath
 		return ((a.y_ == b.y_) && (a.x_ < b.x_)) || (a.y_ > b.y_);
 	}
 
+
+
+
+
+	//----------------------------------------------------------------
+	//matrix defination
+	//----------------------------------------------------------------
+
+	template<size_t ROW, size_t COL, typename T>
+	struct Matrix
+	{
+		T m_[ROW][COL];
+		inline Matrix() {}
+
+		inline Matrix(const Matrix<ROW, COL, T>& other)
+		{
+			for (size_t r = 0;r < ROW;r++)for (size_t c = 0;c < COL;c++)
+				m_[r][c] = other.m_[r][c];
+		}
+
+
+		inline Matrix(const std::initializer_list<Vector<COL, T>>& lists)
+		{
+			auto iter = lists.begin();
+			for (size_t i = 0;i < ROW;i++) SetRow(i, *iter++);
+		}
+
+		inline const T* operator[](size_t row)const { assert(row < ROW); return m_[row]; }
+		inline T* operator[](size_t row) { assert(row < ROW); return m_[row]; }
+
+		inline Vector<COL,T> Row(size_t row)const
+		{
+			assert(row < ROW);
+			Vector<COL, T> res;
+			for (size_t i = 0;i < COL;i++)res[i] = m_[row][i];
+			return res;
+		}
+
+		inline Vector<ROW,T> Col(size_t col)const 
+		{
+			assert(col < COL);
+			Vector<ROW, T> a;
+			for (size_t i = 0; i < ROW; i++) a[i] = m_[i][col];
+			return a;
+		}
+
+		inline void SetRow(size_t row, const Vector<COL, T>& a)
+		{
+			assert(row < ROW);
+			for (size_t i = 0;i < COL;i++)m_[row][i] = a[i];
+		}
+
+		inline void SetCol(size_t col, const Vector<ROW, T>& a)
+		{
+			assert(col < COL);
+			for (size_t i = 0; i < ROW; i++) m_[i][col] = a[i];
+		}
+
+		inline Matrix<ROW - 1, COL - 1, T>
+		GetMinor(size_t row, size_t col)const
+		{
+			Matrix<ROW - 1, COL - 1, T> ret;
+			for (size_t r = 0;r < ROW - 1;r++)for (size_t c = 0;c < COL - 1;c++)
+			{
+				ret.m_[r][c] = m_[r < row ? r : r + 1][c < col ? c : c + 1];
+			}
+			return ret;
+		}
+
+		inline Matrix<COL, ROW, T> 
+		Transpose()const
+		{
+			Matrix<COL, ROW, T>ret;
+			for (size_t r = 0;r < ROW;r++)for (size_t c = 0;c < COL;c++)
+				ret.m_[c][r] = m_[r][c];
+			return ret;
+		}
+
+		inline static Matrix<ROW, COL, T>
+		GetZero()
+		{
+			Matrix<ROW, COL, T> ret;
+			for (size_t r = 0;r < ROW;r++)for (size_t c = 0;c < COL;c++)
+				ret.m_[r][c] = 0;
+			return ret;
+		}
+
+		inline static Matrix<ROW, COL, T>
+		GetIdentity()
+		{
+			Matrix<ROW, COL, T> ret;
+			for (size_t r = 0;r < ROW;r++)for (size_t c = 0;c < COL;c++)
+				ret.m_[r][c] = (r == c) ? 1 : 0;
+			return ret;
+		}
+
+	};
+
 	
+	
+
+	//----------------------------------------------------------------------
+	//数学库：矩阵运算
+	//----------------------------------------------------------------------
+	template<size_t ROW, size_t COL, typename T>
+	inline bool operator ==(const Matrix<ROW, COL, T>& a, const Matrix<ROW, COL, T>& b)
+	{
+		for (size_t r = 0;r < ROW;r++)for (size_t c = 0;c < COL;c++)
+			if (a.m_[r][c] != b.m_[r][c])return false;
+
+		return true;
+	}
+
+	template<size_t ROW, size_t COL, typename T>
+	inline bool operator!=(const Matrix<ROW, COL, T>& a, const Matrix<ROW, COL, T>& b)
+	{
+		return !(a == b);
+	}
+
+	template<size_t ROW, size_t COL, typename T>
+	inline Matrix<ROW, COL, T> operator - (const Matrix<ROW, COL, T>& src) {
+		Matrix<ROW, COL, T> out;
+		for (size_t j = 0; j < ROW; j++) {
+			for (size_t i = 0; i < COL; i++)
+				out.m_[j][i] = -src.m_[j][i];
+		}
+		return out;
+	}
+
+	template<size_t ROW, size_t COL, typename T>
+	inline Matrix<ROW, COL, T> operator + (const Matrix<ROW, COL, T>& a, const Matrix<ROW, COL, T>& b) {
+		Matrix<ROW, COL, T> out;
+		for (size_t j = 0; j < ROW; j++) {
+			for (size_t i = 0; i < COL; i++)
+				out.m_[j][i] = a.m_[j][i] + b.m_[j][i];
+		}
+		return out;
+	}
+
+	template<size_t ROW, size_t COL, typename T>
+	inline Matrix<ROW, COL, T> operator - (const Matrix<ROW, COL, T>& a, const Matrix<ROW, COL, T>& b) {
+		Matrix<ROW, COL, T> out;
+		for (size_t j = 0; j < ROW; j++) {
+			for (size_t i = 0; i < COL; i++)
+				out.m_[j][i] = a.m_[j][i] - b.m_[j][i];
+		}
+		return out;
+	}
+
+	template<size_t ROW, size_t COL, size_t NEWCOL, typename T>
+	inline Matrix<ROW, NEWCOL, T> operator * (const Matrix<ROW, COL, T>& a, const Matrix<COL, NEWCOL, T>& b) {
+		Matrix<ROW, NEWCOL, T> out;
+		for (size_t j = 0; j < ROW; j++) {
+			for (size_t i = 0; i < NEWCOL; i++) {
+				out.m_[j][i] = VectorDot(a.Row(j), b.Col(i));
+			}
+		}
+		return out;
+	}
+
+	template<size_t ROW, size_t COL, typename T>
+	inline Matrix<ROW, COL, T> operator * (const Matrix<ROW, COL, T>& a, T x) {
+		Matrix<ROW, COL, T> out;
+		for (size_t j = 0; j < ROW; j++) {
+			for (size_t i = 0; i < COL; i++) {
+				out.m_[j][i] = a.m_[j][i] * x;
+			}
+		}
+		return out;
+	}
+
+	template<size_t ROW, size_t COL, typename T>
+	inline Matrix<ROW, COL, T> operator / (const Matrix<ROW, COL, T>& a, T x) {
+		Matrix<ROW, COL, T> out;
+		for (size_t j = 0; j < ROW; j++) {
+			for (size_t i = 0; i < COL; i++) {
+				out.m_[j][i] = a.m_[j][i] / x;
+			}
+		}
+		return out;
+	}
+
+	template<size_t ROW, size_t COL, typename T>
+	inline Matrix<ROW, COL, T> operator * (T x, const Matrix<ROW, COL, T>& a) {
+		return (a * x);
+	}
+
+	template<size_t ROW, size_t COL, typename T>
+	inline Matrix<ROW, COL, T> operator / (T x, const Matrix<ROW, COL, T>& a) {
+		Matrix<ROW, COL, T> out;
+		for (size_t j = 0; j < ROW; j++) {
+			for (size_t i = 0; i < COL; i++) {
+				out.m_[j][i] = x / a.m_[j][i];
+			}
+		}
+		return out;
+	}
+
+	template<size_t ROW, size_t COL, typename T>
+	inline Vector<COL, T> operator * (const Vector<ROW, T>& a, const Matrix<ROW, COL, T>& m) {
+		Vector<COL, T> b;
+		for (size_t i = 0; i < COL; i++)
+			b[i] = vector_dot(a, m.Col(i));
+		return b;
+	}
+
+	template<size_t ROW, size_t COL, typename T>
+	inline Vector<ROW, T> operator * (const Matrix<ROW, COL, T>& m, const Vector<COL, T>& a) {
+		Vector<ROW, T> b;
+		for (size_t i = 0; i < ROW; i++)
+			b[i] = VectorDot(a, m.Row(i));
+		return b;
+	}
+
+	typedef Matrix<2, 2, float> Mat2f;
+	typedef Matrix<3, 3, float> Mat3f;
+	typedef Matrix<4, 4, float> Mat4f;
+
+
+	//空间运算
+
+	template<typename T>
+	inline Matrix<4, 4, T> Tranlate(const Matrix<4, 4, T>& m, const Vector<3, T>& v)
+	{
+		Matrix<4, 4, T> res(m);
+		res[0][3] = res[0][3] + v[0];
+		res[1][3] = res[1][3] + v[1];
+		res[2][3] = res[2][3] + v[2];
+		return res;
+	}
+
+	template<typename T>
+	inline Matrix<4, 4, T> Scale(const Matrix<4, 4, T>& m, const Vector<3, T>& v)
+	{
+		Matrix<4, 4, T> res(m);
+		for (int i = 0;i < 3;i++)
+		{
+			res[0][i] *= v[0];
+			res[1][i] *= v[1];
+			res[2][i] *= v[2];
+		}
+		return res;
+	}
+
+	/*
+	*** m:变换举证
+	*** angle:弧度制
+	*** v：旋转轴
+ 	*/
+	template<typename T>
+	inline Matrix<4, 4, T> Rotate(const Matrix<4, 4, T>& m,T angle, const Vector<3, T>& v)
+	{
+		//fomula: 													(0, -v[2], v[1])
+		//	R(n,angle)=cos(angle)*I+(1-cos(angle))vvT+sin(angle)	(v[2], 0, -v[0])
+		//															(-v[1],v[0] ,0 )
+		angle = angle / 180 * 3.1415926;
+		T cosa = (T)std::cos(angle);
+		T sina = (T)std::sin(angle);
+
+		Vector<3, T> n = Normalize(v);
+		Vector<3, T> temp((T(1) - cosa) * n);
+
+		Matrix<4,4,T> rotate;
+		rotate[0][0] = cosa + temp[0] * n[0];
+		rotate[1][0] = temp[0] * n[1] + sina * n[2];
+		rotate[2][0] = temp[0] * n[2] - sina * n[1];
+		rotate[3][0] = 0;
+		
+		rotate[0][1] = temp[1] * n[0] - sina * n[2];
+		rotate[1][1] = cosa + temp[1] * n[1];
+		rotate[2][1] = temp[1] * n[2] + sina * n[0];
+		rotate[3][1] = 0;
+		
+		rotate[0][2] = temp[2] * n[0] + sina * n[1];
+		rotate[1][2] = temp[2] * n[1] - sina * n[0];
+		rotate[2][2] = cosa + temp[2] * n[2];
+		rotate[3][2] = 0;
+
+		rotate[0][3] = 0;
+		rotate[1][3] = 0;
+		rotate[2][3] = 0;
+		rotate[3][3] = 1;
+
+
+		Matrix<4, 4, T> result = m*rotate;
+		return result;
+	}
+
+	inline Mat4f LookAt(const Vec3f& eye, const Vec3f& at, const Vec3f& up) {
+		const Vec3f f(Normalize(at - eye));
+		const Vec3f s(Normalize(f.Cross(up)));
+		const Vec3f u(s.Cross(f));
+
+		Mat4f result = Mat4f::GetIdentity();
+		result[0][0] = s.x_;
+		result[0][1] = s.y_;
+		result[0][2] = s.z_;
+
+		result[1][0] = u.x_;
+		result[1][1] = u.y_;
+		result[1][2] = u.z_;
+
+		result[2][0] = -f.x_;
+		result[2][1] = -f.y_;
+		result[2][2] = -f.z_;
+
+		result[0][3] = -VectorDot(s,eye);
+		result[1][3] = -VectorDot(u, eye);
+		result[2][3] = -VectorDot(f,eye);
+		return result;
+
+	}
+
+	//right-hand!!
+	inline Mat4f Perspective(float fovy, float aspect, float zn, float zf) {
+		fovy = fovy / 180 * 3.1415926;
+		const float tan_half_fov = tan(fovy / 2);
+		Mat4f result = Mat4f::GetZero();
+		result[0][0] = 1 / (aspect * tan_half_fov);
+		result[1][1] = 1 / tan_half_fov;
+		result[3][2] = - 1.0f;
+
+		result[2][2] = -(zf + zn) / (zf - zn);
+		result[2][3] = -(2 * zf * zn) / (zf - zn);
+
+		return result;
+	}
 }

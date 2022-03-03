@@ -10,7 +10,7 @@ int main(void)
     /* Initialize the library */
     if (!glfwInit())
         return -1;
-    
+
     /* Create a windowed mode window and its OpenGL context */
     window = glfwCreateWindow(640, 480, "Hello World", NULL, NULL);
     if (!window)
@@ -23,26 +23,37 @@ int main(void)
     glfwMakeContextCurrent(window);
     gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 
-    struct { TinyMath::Vec4f pos; TinyMath::Vec4f color; } vs_input[3] = {
-		{ {  0.0,  0.7, 0.90, 1}, {1, 0, 0, 1} },
-		{ { -0.6, -0.2, 0.01, 1}, {0, 1, 0, 1} },
-		{ { +0.6, -0.2, 0.01, 1}, {0, 0, 1, 1} },
+
+
+    struct V
+    {
+        TinyMath::Vec4f pos_;
+        TinyMath::Vec4f color_;
     };
+
+    std::vector<V> vertices = {
+       {{-0.5f,0.0f,0.0f,1.0f},{1.0f,0.0f,0.0f,1.0f}},
+       {{0.5f,0.0f,0.0f,1.0f},{0.0f,1.0f,0.0f,1.0f}},
+       {{0.0f,0.5f,0.0f,1.0f},{0.0f,0.0f,1.0f,1.0f}},
+    };
+    std::vector<uint32_t> indices = { 0,1,2};
+    VertexArrayBuffer vao(std::move(vertices), std::move(indices));
     const int VARYING_COLOR = 0;
     Shader shader;
-    
+
     shader.vertex_shader_ = [&](int index, ShaderContext& output)->TinyMath::Vec4f {
-        output.varying_vec4f_[VARYING_COLOR] = vs_input[index].color;
-        return vs_input[index].pos;
+        auto& v = vao.get_vertex(index);
+        output.varying_vec4f_[VARYING_COLOR] = v.color_;
+        return  v.pos_;
     };
     shader.fragment_shader_ = [&](ShaderContext& input)->TinyMath::Vec4f {
         return input.varying_vec4f_[VARYING_COLOR];
     };
     Renderer renderer(640, 480);
 
+    renderer.set_render_state(true, false);
 
-   
-   
+
 
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
@@ -50,8 +61,8 @@ int main(void)
         /* Render here */
         //glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
         //glClear(GL_COLOR_BUFFER_BIT);
-        renderer.Clear(COLOR_BUFFER_BIT|DEPTH_BUFFER_BIT);
-        renderer.DrawTriangle(shader);
+        renderer.Clear(COLOR_BUFFER_BIT | DEPTH_BUFFER_BIT);
+        renderer.DrawArray(vao, shader);
         glDrawPixels(640, 480, GL_RGBA, GL_UNSIGNED_BYTE, renderer.get_canvas());
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
