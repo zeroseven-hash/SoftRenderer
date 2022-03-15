@@ -12,3 +12,13 @@
 mkdir build
 cmake ..
 ~~~
+## Example
+* triangle  
+![triangle](./images/triangle.png)
+* texture
+![texture](./images/texutre.png)
+* model
+![model](./images/model.png)
+## TODO
+1. camera
+2. 修复纹理采样的边缘bug
