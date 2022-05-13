@@ -1,0 +1,32 @@
+cmake_minimum_required(VERSION 3.0.0)
+project(Example VERSION 0.1.0)
+
+
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
+
+
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/glfw)
+set_property(TARGET glfw PROPERTY FOLDER "dependencies")
+
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/glad)
+set_property(TARGET GLAD PROPERTY FOLDER "dependencies")
+
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/imgui)
+set_property(TARGET imgui PROPERTY FOLDER "dependencies")
+
+# assimp
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_ASSIMP_TOOLS OFF CACHE BOOL "" FORCE)
+set(ASSIMP_NO_EXPORT ON CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_DRACO OFF CACHE BOOL "" FORCE)
+set(ASSIMP_WERROR OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_ZLIB OFF)
+unset(CMAKE_C_STANDARD)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/assimp)
+set_property(TARGET assimp PROPERTY FOLDER "dependencies")
+
+set(CMAKE_C_STANDARD ${C_STANDARD_DEFAULT})
+
