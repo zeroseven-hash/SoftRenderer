@@ -1,18 +1,23 @@
 #include"Application.h"
+#include"Scene.h"
+#include"Event.h"
 
+#include<functional>
 
 #include<glad/glad.h>
 #include <GLFW/glfw3.h> 
 #include<imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
-
+Application* Application::s_instance = nullptr;
 Application::Application(const char* name, uint32_t width, uint32_t height)
 :m_name(name),m_width(width),m_height(height)
 {
     m_last_time = 0.0f;
     Init();
 }
+
+
 void Application::Init()
 {
     // Setup window
@@ -55,6 +60,11 @@ void Application::Init()
     // Setup Platform/Renderer backends
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init();
+
+    Input::Init(window, std::bind(&Application::OnEvent, this, std::placeholders::_1));
+    //init scene
+    if(m_scene) m_scene->Init();
+    
 }
 void Application::Run()
 {
@@ -68,19 +78,22 @@ void Application::Run()
         // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application.
         // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
         glfwPollEvents();
+        
 
         // Start the Dear ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        ImguiUpdate();
+        if(m_scene) m_scene->ImguiUpdate();
         
         
         // Rendering
         float cur_time = (float)glfwGetTime();
         TimeStep ts(cur_time - m_last_time);
-        Update(ts);
+        m_last_time = cur_time;
+        if(m_scene) m_scene->Update(ts);
+        
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -103,26 +116,26 @@ void Application::Run()
 
 
 
-
-void Application::ImguiUpdate()
-{
-    ImGui::ShowDemoWindow();
-}
-void Application::Update(TimeStep ts)
-{
-    
-    glViewport(0, 0, m_width, m_height);
-    glClearColor(0.5, 0.5, 0.5, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
-}
-
 void Application::Destory()
 {
     // Cleanup
+    m_scene->Destory();
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
 
     glfwDestroyWindow(glfwGetCurrentContext());
     glfwTerminate();
+}
+
+void Application::OnEvent(const Event* e)
+{
+    m_scene->OnEvent(e);
+}
+
+Application* Application::CreateApp(const char* name, uint32_t width, uint32_t height)
+{
+    if (s_instance == nullptr)
+        s_instance = new Application(name, width, height);
+    return s_instance;
 }

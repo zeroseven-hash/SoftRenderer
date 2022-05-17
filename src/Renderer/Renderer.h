@@ -7,6 +7,7 @@
 
 #include"Math.h"
 #include"Buffer.h"
+#include"Shader.h"
 typedef int BufferFlag;
 
 enum BufferFlag_
@@ -15,33 +16,13 @@ enum BufferFlag_
 	COLOR_BUFFER_BIT=Bit(1)
 };
 
-struct ShaderContext
-{
-	std::map<int, float> varying_float_;    // 浮点数 varying 列表
-	std::map<int, TinyMath::Vec2f> varying_vec2f_;    // 二维矢量 varying 列表
-	std::map<int, TinyMath::Vec3f> varying_vec3f_;    // 三维矢量 varying 列表
-	std::map<int, TinyMath::Vec4f> varying_vec4f_;    // 四维矢量 varying 列表
-};
 
-
-class Canvas;
-template<typename V,typename U=uint32_t>
-struct Shader
-{
-	typedef std::function<TinyMath::Vec4f(const VertexArrayBuffer<V,U>&,int index, ShaderContext&)> VertexShader;
-	typedef std::function<TinyMath::Vec4f(ShaderContext&)> FragmentShader;
-	VertexShader vertex_shader_;
-	FragmentShader fragment_shader_;
-	Canvas* textures_[32];
-	void SetTexture(int index, Canvas* tex) { assert(index < 32);textures_[index] = tex; }
-	//TODO: geometry shader;
-};
 
 struct Color
 {
 	uint8_t r_ = 0, g_ = 0, b_ = 0, a_ = 0;
 	Color() = default;
-	Color(uint32_t r, uint32_t g, uint32_t b, uint32_t a) :r_(r), g_(g), b_(b), a_(a) {}
+	Color(uint8_t r, uint8_t g, uint8_t b, uint8_t a) :r_(r), g_(g), b_(b), a_(a) {}
 	Color(const TinyMath::Vec4f& color)
 	{
 		r_ = (uint8_t)TinyMath::Between(0, 255, (int)(color.r_ * 255));
@@ -170,12 +151,13 @@ public:
 	}
 	inline ~Renderer(){}
 public:
+	void Init(int width,int height);
 	void Clear(BufferFlag flag);
 
 
 
-	template<typename V, typename U=uint32_t>
-	void DrawTriangle(const VertexArrayBuffer<V, U>& vao, const Shader<V>& shader, uint32_t* indices)
+	template<typename VAO, typename SHADER>
+	void DrawTriangle(const VAO& vao, SHADER& shader, uint32_t* indices)
 	{
 		if (m_canvas == nullptr) return;
 		for (int k = 0;k < 3;k++)
@@ -186,7 +168,7 @@ public:
 			v.context_.varying_vec3f_.clear();
 			v.context_.varying_vec4f_.clear();
 
-			v.pos_ = shader.vertex_shader_(vao, indices[k], v.context_);
+			v.pos_ = shader.VertexShader(vao, indices[k], v.context_);
 
 			//裁剪 pos(nx,ny,n^2,z);x y should between [-1,1],n could be near or far
 
@@ -226,7 +208,7 @@ public:
 				m_max_y = TinyMath::Between(0, m_height - 1, std::max(m_max_y, v.coords_.y_));
 			}
 		}
-		//TODO:绘制线框
+		//绘制线框
 		if (m_render_line)
 		{
 			m_canvas->DrawLine(m_vertex[0].coords_.x_, m_vertex[0].coords_.y_, m_vertex[1].coords_.x_, m_vertex[1].coords_.y_, m_color_fg);
@@ -255,7 +237,7 @@ public:
 		bool TopLeft12 = IsTopLeft(p[1], p[2]);
 		bool TopLeft20 = IsTopLeft(p[2], p[0]);
 
-
+		ShaderContext& input=shader.get_context();
 		for (int x = m_min_x;x <= m_max_x;x++) for (int y = m_min_y;y <= m_max_y;y++)
 		{
 			TinyMath::Vec2f pixel = { (float)x + 0.5f,(float)y + 0.5f };
@@ -306,7 +288,7 @@ public:
 			float c1 = vs[1]->rhw_ * b * w;
 			float c2 = vs[2]->rhw_ * c * w;
 
-			ShaderContext input;
+			
 			ShaderContext& i0 = vs[0]->context_;
 			ShaderContext& i1 = vs[1]->context_;
 			ShaderContext& i2 = vs[2]->context_;
@@ -345,7 +327,7 @@ public:
 				input.varying_vec4f_[key] = c0 * f0 + c1 * f1 + c2 * f2;
 			}
 
-			TinyMath::Vec4f color = shader.fragment_shader_(input);
+			TinyMath::Vec4f color = shader.FragmentShader(input);
 			m_canvas->set_pixel(x, y, Color(color));
 		}
 		if (m_render_line)
@@ -358,8 +340,8 @@ public:
 	}
 
 
-	template<typename V, typename U>
-	inline void DrawArray(const VertexArrayBuffer<V, U>& vao, const Shader<V>& shader)
+	template<typename VAO, typename SHADER>
+	inline void DrawArray(const VAO& vao, SHADER& shader)
 	{
 		const auto& vs = vao.get_vertices();
 		const auto& indices = vao.get_indices();
@@ -375,13 +357,13 @@ public:
 	inline int get_height()const  { return m_height; }
 	inline uint8_t* get_canvas()const { return m_canvas->get_bits(); }
 	inline void set_line_color(const Color& color) { m_color_fg = color; }
+	inline void set_clear_color(const Color& color) { m_color_bg = color; }
 	inline void set_render_state(bool pixel, bool line)
 	{
 		m_render_pixel = pixel;
 		m_render_line = line;
 	}
 protected:
-	void Init(int width,int height);
 	void Reset();
 protected:
 	Canvas* m_canvas;

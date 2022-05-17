@@ -626,7 +626,7 @@ namespace TinyMath
 
 		result[0][3] = -VectorDot(s,eye);
 		result[1][3] = -VectorDot(u, eye);
-		result[2][3] = -VectorDot(f,eye);
+		result[2][3] = VectorDot(f,eye);
 		return result;
 
 	}
@@ -634,15 +634,149 @@ namespace TinyMath
 	//right-hand!!
 	inline Mat4f Perspective(float fovy, float aspect, float zn, float zf) {
 		fovy = fovy / 180 * 3.1415926;
-		const float tan_half_fov = tan(fovy / 2);
+		const float tan_half_fov = std::tan(fovy*0.5);
 		Mat4f result = Mat4f::GetZero();
 		result[0][0] = 1 / (aspect * tan_half_fov);
 		result[1][1] = 1 / tan_half_fov;
-		result[3][2] = - 1.0f;
-
 		result[2][2] = -(zf + zn) / (zf - zn);
+
+
+		result[3][2] = - 1.0f;
 		result[2][3] = -(2 * zf * zn) / (zf - zn);
 
 		return result;
+	}
+
+
+
+
+
+	template<typename T>
+	inline bool IsEqual(T a, T b, T elpsilon)
+	{
+		T lh = std::abs(a - b);
+		return lh <= elpsilon;
+	}
+
+
+
+
+	//----------------------------------------------------------------------
+	//ËÄÔªÊý
+	//----------------------------------------------------------------------
+	struct Quaternion
+	{
+		Quaternion() = delete;
+		Quaternion(float x, float y, float z, float w):x_(x),y_(y),z_(z),w_(w){}
+		Quaternion(const Vec3f& axis, float angle)
+		{
+			const float ha = angle * 0.5f;
+			const float sa = std::sin(ha);
+			x_ = axis.x_*sa;
+			y_ = axis.y_*sa;
+			z_ = axis.z_*sa;
+			w_ = std::cos(ha);
+		}
+
+
+		inline float Dot(const Quaternion& other)const
+		{
+			return x_ * other.x_ + y_ * other.y_ + z_ * other.z_ + w_ * other.w_;
+		}
+
+		inline static Quaternion GetIdentity()
+		{
+			return Quaternion(0.0f, 0.0f, 0.0f, 1.0f);
+		}
+		inline static Quaternion GetZero()
+		{
+			return Quaternion(0.0f, 0.0f, 0.0f, 0.0f);
+		}
+		
+		float x_, y_, z_,w_;
+	};
+
+
+
+	inline Quaternion operator*(const Quaternion& l, const Quaternion& r)
+	{
+		const float lx = l.x_;
+		const float ly = l.y_;
+		const float lz = l.z_;
+		const float lw = l.w_;
+
+		const float rx = r.x_;
+		const float ry = r.y_;
+		const float rz = r.z_;
+		const float rw = r.w_;
+
+		return
+		{
+			lw * rx + lx * rw + ly * rz - lz * ry,
+			lw * ry - lx * rz + ly * rw + lz * rx,
+			lw * rz + lx * ry - ly * rx + lz * rw,
+			lw * rw - lx * rx - ly * ry - lz * rz,
+		};
+	}
+
+	inline Quaternion Normalize(const Quaternion& a)
+	{
+		const float norm = a.Dot(a);
+		if (0.0f < norm)
+		{
+			const float inv_norm = 1/std::sqrt(norm);
+			return Quaternion(a.x_ * inv_norm, a.y_ * inv_norm, a.z_ * inv_norm, a.w_ * inv_norm);
+		}
+		return Quaternion::GetIdentity();
+	}
+
+	inline Vec3f ToXAxis(const Quaternion& a)
+	{
+		const float xx = a.x_;
+		const float yy = a.y_;
+		const float zz = a.z_;
+		const float ww = a.w_;
+		const float ysq = yy * yy;
+		const float zsq = zz * zz;
+
+		return
+		{
+			1.0f - 2.0f * ysq - 2.0f * zsq,
+			2.0f * xx * yy + 2.0f * zz * ww,
+			2.0f * xx * zz - 2.0f * yy * ww
+		};
+	}
+	inline Vec3f ToYAxis(const Quaternion& a)
+	{
+		const float xx = a.x_;
+		const float yy = a.y_;
+		const float zz = a.z_;
+		const float ww = a.w_;
+		const float xsq = xx*xx;
+		const float zsq = zz*zz;
+
+		return
+		{
+			2.0f * xx * yy - 2.0f * zz * ww,
+			1.0f - 2.0f * xsq - 2.0f * zsq,
+			2.0f * yy * zz + 2.0f * xx * ww
+		};
+	}
+
+	inline Vec3f ToZAxis(const Quaternion& a)
+	{
+		const float xx = a.x_;
+		const float yy = a.y_;
+		const float zz = a.z_;
+		const float ww = a.w_;
+		const float xsq = xx * xx;
+		const float ysq = yy * yy;
+
+		return
+		{
+			2.0f * xx * zz + 2.0f * yy * ww,
+			2.0f * yy * zz - 2.0f * xx * ww,
+			1.0f - 2.0f * xsq - 2.0f * ysq
+		};
 	}
 }

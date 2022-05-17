@@ -1,5 +1,4 @@
-cmake_minimum_required(VERSION 3.0.0)
-project(Example VERSION 0.1.0)
+
 
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
@@ -27,6 +26,21 @@ set(ASSIMP_BUILD_ZLIB OFF)
 unset(CMAKE_C_STANDARD)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/assimp)
 set_property(TARGET assimp PROPERTY FOLDER "dependencies")
-
 set(CMAKE_C_STANDARD ${C_STANDARD_DEFAULT})
+
+
+
+#rttr
+set(BUILD_RTTR_DYNAMIC OFF)
+set(BUILD_UNIT_TESTS OFF)
+set(BUILD_STATIC ON)
+set(BUILD_EXAMPLES OFF)
+set(BUILD_EXAMPLES OFF)
+set(BUILD_DOCUMENTATION OFF)
+set(BUILD_INSTALLER OFF)
+set(BUILD_PACKAGE OFF)
+set(CUSTOM_DOXYGEN_STYLE OFF)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/rttr)
+set_property(TARGET rttr_core_lib PROPERTY FOLDER "dependencies")
+
 
