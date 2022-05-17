@@ -1,5 +1,5 @@
-[submodule "3rd party/assimp"]
-	path = 3rd party/assimp
+[submodule "3rdparty/assimp"]
+	path = 3rdparty/assimp
 	url = https://github.com/assimp/assimp.git
 [submodule "3rdparty/rttr"]
 	path = 3rdparty/rttr
