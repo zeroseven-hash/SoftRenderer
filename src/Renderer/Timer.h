@@ -2,6 +2,9 @@
 
 #include<chrono>
 #include<iostream>
+
+#define TICK(x) auto bench_##x = std::chrono::steady_clock::now();
+#define TOCK(x) std::cout << #x ": " << std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - bench_##x).count() << "s" << std::endl;
 class Timer
 {
 public:

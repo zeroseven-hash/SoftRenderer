@@ -4,6 +4,8 @@
 #include<map>
 #include<cstring>
 #include<functional>
+#include<thread>
+//#include<omp.h>
 
 #include"Math.h"
 #include"Buffer.h"
@@ -237,99 +239,122 @@ public:
 		bool TopLeft12 = IsTopLeft(p[1], p[2]);
 		bool TopLeft20 = IsTopLeft(p[2], p[0]);
 
-		ShaderContext& input=shader.get_context();
-		for (int x = m_min_x;x <= m_max_x;x++) for (int y = m_min_y;y <= m_max_y;y++)
+		ShaderContext input[2];
+
+		auto func = [&](int x_min, int x_max,ShaderContext& input)
 		{
-			TinyMath::Vec2f pixel = { (float)x + 0.5f,(float)y + 0.5f };
+			for (int x = x_min; x <= x_max; x++) for (int y = m_min_y; y <= m_max_y; y++)
+			{
+				TinyMath::Vec2f pixel = { (float)x + 0.5f,(float)y + 0.5f };
 
-			// Edge Equation
-			// 使用整数避免浮点误差，同时因为是左手系，所以符号取反
-			int E01 = -(x - p[0].x_) * (p[1].y_ - p[0].y_) + (y - p[0].y_) * (p[1].x_ - p[0].x_);
-			int E12 = -(x - p[1].x_) * (p[2].y_ - p[1].y_) + (y - p[1].y_) * (p[2].x_ - p[1].x_);
-			int E20 = -(x - p[2].x_) * (p[0].y_ - p[2].y_) + (y - p[2].y_) * (p[0].x_ - p[2].x_);
-
-
-			// 如果是左上边，用 E >= 0 判断合法，如果右下边就用 E > 0 判断合法
-			// 这里通过引入一个误差 1 ，来将 < 0 和 <= 0 用一个式子表达
-			if (E01 < (TopLeft01 ? 0 : 1)) continue;   // 在第一条边后面
-			if (E12 < (TopLeft12 ? 0 : 1)) continue;   // 在第二条边后面
-			if (E20 < (TopLeft20 ? 0 : 1)) continue;   // 在第三条边后面
+				// Edge Equation
+				// 使用整数避免浮点误差，同时因为是左手系，所以符号取反
+				int E01 = -(x - p[0].x_) * (p[1].y_ - p[0].y_) + (y - p[0].y_) * (p[1].x_ - p[0].x_);
+				int E12 = -(x - p[1].x_) * (p[2].y_ - p[1].y_) + (y - p[1].y_) * (p[2].x_ - p[1].x_);
+				int E20 = -(x - p[2].x_) * (p[0].y_ - p[2].y_) + (y - p[2].y_) * (p[0].x_ - p[2].x_);
 
 
-			// 三个端点到当前点的矢量
-			TinyMath::Vec2f s0 = vs[0]->center_ - pixel;
-			TinyMath::Vec2f s1 = vs[1]->center_ - pixel;
-			TinyMath::Vec2f s2 = vs[2]->center_ - pixel;
+				// 如果是左上边，用 E >= 0 判断合法，如果右下边就用 E > 0 判断合法
+				// 这里通过引入一个误差 1 ，来将 < 0 和 <= 0 用一个式子表达
+				if (E01 < (TopLeft01 ? 0 : 1)) return;   // 在第一条边后面
+				if (E12 < (TopLeft12 ? 0 : 1)) return;   // 在第二条边后面
+				if (E20 < (TopLeft20 ? 0 : 1)) return;   // 在第三条边后面
 
-			// 重心坐标系：计算内部子三角形面积 a / b / c
-			float a = std::abs(s1.Cross(s2));    // 子三角形 Px-P1-P2 面积
-			float b = std::abs(s2.Cross(s0));    // 子三角形 Px-P2-P0 面积
-			float c = std::abs(s0.Cross(s1));    // 子三角形 Px-P0-P1 面积
-			float s = a + b + c;                 // 大三角形 P0-P1-P2 面积
 
-			if (s == 0.0f) continue;
+				// 三个端点到当前点的矢量
+				TinyMath::Vec2f s0 = vs[0]->center_ - pixel;
+				TinyMath::Vec2f s1 = vs[1]->center_ - pixel;
+				TinyMath::Vec2f s2 = vs[2]->center_ - pixel;
 
-			// Barycentric coordinates interpolation
-			a = a * (1.0f / s);
-			b = b * (1.0f / s);
-			c = c * (1.0f / s);
+				// 重心坐标系：计算内部子三角形面积 a / b / c
+				float a = std::abs(s1.Cross(s2));    // 子三角形 Px-P1-P2 面积
+				float b = std::abs(s2.Cross(s0));    // 子三角形 Px-P2-P0 面积
+				float c = std::abs(s0.Cross(s1));    // 子三角形 Px-P0-P1 面积
+				float s = a + b + c;                 // 大三角形 P0-P1-P2 面积
 
-			//深度以及其倒数在可以直接使用重心插值
-			float rhw = vs[0]->rhw_ * a + vs[1]->rhw_ * b + vs[2]->rhw_ * c;
+				if (s == 0.0f) return;
 
-			//depth_buffer数组下标和x,y相反
-			if (rhw < m_depth_buffer[y][x])continue;
-			m_depth_buffer[y][x] = rhw;
+				// Barycentric coordinates interpolation
+				a = a * (1.0f / s);
+				b = b * (1.0f / s);
+				c = c * (1.0f / s);
 
-			float w = 1.0f / ((rhw != 0.0f) ? rhw : 1.0f);
+				//深度以及其倒数在可以直接使用重心插值
+				float rhw = vs[0]->rhw_ * a + vs[1]->rhw_ * b + vs[2]->rhw_ * c;
 
-			//透视正确插值
-			float c0 = vs[0]->rhw_ * a * w;
-			float c1 = vs[1]->rhw_ * b * w;
-			float c2 = vs[2]->rhw_ * c * w;
+				//depth_buffer数组下标和x,y相反
+				if (rhw < m_depth_buffer[y][x])return;
+				m_depth_buffer[y][x] = rhw;
 
+				float w = 1.0f / ((rhw != 0.0f) ? rhw : 1.0f);
+
+				//透视正确插值
+				float c0 = vs[0]->rhw_ * a * w;
+				float c1 = vs[1]->rhw_ * b * w;
+				float c2 = vs[2]->rhw_ * c * w;
+
+
+				ShaderContext& i0 = vs[0]->context_;
+				ShaderContext& i1 = vs[1]->context_;
+				ShaderContext& i2 = vs[2]->context_;
+
+
+				// 插值各项 varying
+				for (auto const& it : i0.varying_float_) {
+					int key = it.first;
+					float f0 = i0.varying_float_[key];
+					float f1 = i1.varying_float_[key];
+					float f2 = i2.varying_float_[key];
+					input.varying_float_[key] = c0 * f0 + c1 * f1 + c2 * f2;
+				}
+
+				for (auto const& it : i0.varying_vec2f_) {
+					int key = it.first;
+					const TinyMath::Vec2f& f0 = i0.varying_vec2f_[key];
+					const TinyMath::Vec2f& f1 = i1.varying_vec2f_[key];
+					const TinyMath::Vec2f& f2 = i2.varying_vec2f_[key];
+					input.varying_vec2f_[key] = c0 * f0 + c1 * f1 + c2 * f2;
+				}
+
+				for (auto const& it : i0.varying_vec3f_) {
+					int key = it.first;
+					const TinyMath::Vec3f& f0 = i0.varying_vec3f_[key];
+					const TinyMath::Vec3f& f1 = i1.varying_vec3f_[key];
+					const TinyMath::Vec3f& f2 = i2.varying_vec3f_[key];
+					input.varying_vec3f_[key] = c0 * f0 + c1 * f1 + c2 * f2;
+				}
+
+				for (auto const& it : i0.varying_vec4f_) {
+					int key = it.first;
+					const TinyMath::Vec4f& f0 = i0.varying_vec4f_[key];
+					const TinyMath::Vec4f& f1 = i1.varying_vec4f_[key];
+					const TinyMath::Vec4f& f2 = i2.varying_vec4f_[key];
+					input.varying_vec4f_[key] = c0 * f0 + c1 * f1 + c2 * f2;
+				}
+
+				TinyMath::Vec4f color = shader.FragmentShader(input);
+				m_canvas->set_pixel(x, y, Color(color));
+			}
 			
-			ShaderContext& i0 = vs[0]->context_;
-			ShaderContext& i1 = vs[1]->context_;
-			ShaderContext& i2 = vs[2]->context_;
+		};
 
+		
+//#pragma omp parallel for firstprivate(input) schedule(static,200) 
+		int offset = (m_max_x - m_min_x)/2;
+		static std::thread threads[2];
+		threads[0] = std::thread(func, m_min_x, m_min_x + offset, input[0]);
+		threads[1] = std::thread(func, m_min_x + offset + 1, m_max_x,input[1]);
+		/*std::thread threads0(func,m_min_x,m_min_x+offset);
+		std::thread threads1(func, m_min_x + offset + 1, m_max_x);*/
 
-			// 插值各项 varying
-			for (auto const& it : i0.varying_float_) {
-				int key = it.first;
-				float f0 = i0.varying_float_[key];
-				float f1 = i1.varying_float_[key];
-				float f2 = i2.varying_float_[key];
-				input.varying_float_[key] = c0 * f0 + c1 * f1 + c2 * f2;
-			}
+		threads[0].join();
+		threads[1].join();
 
-			for (auto const& it : i0.varying_vec2f_) {
-				int key = it.first;
-				const TinyMath::Vec2f& f0 = i0.varying_vec2f_[key];
-				const TinyMath::Vec2f& f1 = i1.varying_vec2f_[key];
-				const TinyMath::Vec2f& f2 = i2.varying_vec2f_[key];
-				input.varying_vec2f_[key] = c0 * f0 + c1 * f1 + c2 * f2;
-			}
+		/*for (int x = m_min_x;x <= m_max_x;x++) for (int y = m_min_y;y <= m_max_y;y++)
+		{
+			
+		}*/
 
-			for (auto const& it : i0.varying_vec3f_) {
-				int key = it.first;
-				const TinyMath::Vec3f& f0 = i0.varying_vec3f_[key];
-				const TinyMath::Vec3f& f1 = i1.varying_vec3f_[key];
-				const TinyMath::Vec3f& f2 = i2.varying_vec3f_[key];
-				input.varying_vec3f_[key] = c0 * f0 + c1 * f1 + c2 * f2;
-			}
-
-			for (auto const& it : i0.varying_vec4f_) {
-				int key = it.first;
-				const TinyMath::Vec4f& f0 = i0.varying_vec4f_[key];
-				const TinyMath::Vec4f& f1 = i1.varying_vec4f_[key];
-				const TinyMath::Vec4f& f2 = i2.varying_vec4f_[key];
-				input.varying_vec4f_[key] = c0 * f0 + c1 * f1 + c2 * f2;
-			}
-
-			TinyMath::Vec4f color = shader.FragmentShader(input);
-			m_canvas->set_pixel(x, y, Color(color));
-		}
 		if (m_render_line)
 		{
 			m_canvas->DrawLine(vs[0]->coords_.x_, vs[0]->coords_.y_, vs[1]->coords_.x_, vs[1]->coords_.y_, m_color_fg);
