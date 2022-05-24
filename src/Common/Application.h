@@ -5,7 +5,7 @@
 
 using std::shared_ptr;
 class Scene;
-class Event;
+struct Event;
 struct TimeStep
 {
 public:

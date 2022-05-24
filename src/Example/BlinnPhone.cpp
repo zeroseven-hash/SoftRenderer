@@ -1,20 +1,17 @@
 #include"BlinnPhone.h"
 
+#include"Renderer/Renderer.h"
 
 #include<imgui.h>
-#include<glad/glad.h>
+
 
 
 
 void BlinnPhone::Init()
 {
    
-    m_renderer.Init(Application::Get()->get_width(), Application::Get()->get_height());
-    m_renderer.set_render_state(true, false);
-    glViewport(0, 0, Application::Get()->get_width(), Application::Get()->get_height());
-    m_renderer.set_clear_color(Color(0x00, 0x00, 0x00, 0xff));
-
-
+    
+    Renderer::SetViewPort(Application::Get()->get_width(), Application::Get()->get_height());
     m_model = std::make_shared<Model<PosColorCoordVertex>>("../assets/nanosuit/nanosuit.obj");
     m_camera = std::make_shared<Camera>(60.0f, Application::Get()->get_width(), Application::Get()->get_height(), 0.01f, 100.0f);
     m_camera->set_distance(25.0f);
@@ -40,12 +37,13 @@ void BlinnPhone::Update(TimeStep ts)
     uint32_t width = Application::Get()->get_width();
     uint32_t height = Application::Get()->get_height();
     
-    m_renderer.Clear(COLOR_BUFFER_BIT | DEPTH_BUFFER_BIT);
+    
+    Renderer::Clear(COLOR_BUFFER_BIT | DEPTH_BUFFER_BIT);
+    Renderer::SetState(DRAW_PIXEL);
+    m_model->Draw(m_blinn_shader);
 
 
-
-    m_model->Draw(m_renderer,m_blinn_shader);
-    glDrawPixels(width, height, GL_RGBA, GL_UNSIGNED_BYTE, m_renderer.get_canvas());
+    Renderer::FlushFrame();
 }
 
 void BlinnPhone::OnEvent(const Event* e)

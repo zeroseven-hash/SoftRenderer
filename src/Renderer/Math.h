@@ -2,9 +2,10 @@
 #include<initializer_list>
 #include<cmath>
 #include<assert.h>
+#include<stdint.h>
 
+#define BIT(x) (1<<x)
 
-#define Bit(x) (1<<x)
 
 namespace TinyMath
 {	
@@ -258,6 +259,9 @@ namespace TinyMath
 	typedef Vector<3, int> Vec3i;
 	typedef Vector<4, int> Vec4i;
 
+	typedef Vector<4, uint8_t> Vec4u8i;
+	
+
 	//vector function
 	// = |a| ^ 2
 	template<size_t N, typename T>
@@ -312,10 +316,30 @@ namespace TinyMath
 		return res;
 	}
 
+	
 	// 判断一条边是不是三角形的左上边 (Top-Left Edge)
 	inline bool IsTopLeft(const Vec2i& a, const Vec2i& b)
 	{
 		return ((a.y_ == b.y_) && (a.x_ < b.x_)) || (a.y_ > b.y_);
+	}
+
+	inline Vec4f TransformToVec4(const Vector<4, uint8_t>& col)
+	{
+		Vec4f res;
+		res.r_ = TinyMath::Between(0.0f, 1.0f, (float)col.r_ / 255);
+		res.g_ = TinyMath::Between(0.0f, 1.0f, (float)col.g_ / 255);
+		res.b_ = TinyMath::Between(0.0f, 1.0f, (float)col.b_ / 255);
+		res.a_ = TinyMath::Between(0.0f, 1.0f, (float)col.a_ / 255);
+		return res;
+	}
+	inline Vector<4,uint8_t> TransformToColor(const Vec4f& col)
+	{
+		Vector<4, uint8_t> color;
+		color.r_ = (uint8_t)TinyMath::Between(0, 255, (int)(col.r_ * 255));
+		color.g_ = (uint8_t)TinyMath::Between(0, 255, (int)(col.g_ * 255));
+		color.b_ = (uint8_t)TinyMath::Between(0, 255, (int)(col.b_ * 255));
+		color.a_ = (uint8_t)TinyMath::Between(0, 255, (int)(col.a_ * 255));
+		return color;
 	}
 
 
@@ -410,7 +434,7 @@ namespace TinyMath
 		{
 			Matrix<ROW, COL, T> ret;
 			for (size_t r = 0;r < ROW;r++)for (size_t c = 0;c < COL;c++)
-				ret.m_[r][c] = (r == c) ? 1 : 0;
+				ret.m_[r][c] = (r == c) ? static_cast<T>(1) : static_cast<T>(0);
 			return ret;
 		}
 
@@ -527,8 +551,13 @@ namespace TinyMath
 	template<size_t ROW, size_t COL, typename T>
 	inline Vector<ROW, T> operator * (const Matrix<ROW, COL, T>& m, const Vector<COL, T>& a) {
 		Vector<ROW, T> b;
+		
 		for (size_t i = 0; i < ROW; i++)
-			b[i] = VectorDot(a, m.Row(i));
+		{
+			T sum = static_cast<T>(0);
+			for (size_t j = 0; j < COL; j++) sum += a[j] * m[i][j];
+			b[i] = sum;
+		}
 		return b;
 	}
 
@@ -561,7 +590,7 @@ namespace TinyMath
 		}
 		return res;
 	}
-
+	
 	/*
 	*** m:变换举证
 	*** angle:弧度制
@@ -633,16 +662,16 @@ namespace TinyMath
 
 	//right-hand!!
 	inline Mat4f Perspective(float fovy, float aspect, float zn, float zf) {
-		fovy = fovy / 180 * 3.1415926;
-		const float tan_half_fov = std::tan(fovy*0.5);
+		fovy = fovy / 180.f * 3.1415926f;
+		const float tan_half_fov = std::tan(fovy*0.5f);
 		Mat4f result = Mat4f::GetZero();
-		result[0][0] = 1 / (aspect * tan_half_fov);
-		result[1][1] = 1 / tan_half_fov;
+		result[0][0] = 1.0f / (aspect * tan_half_fov);
+		result[1][1] = 1.0f / tan_half_fov;
 		result[2][2] = -(zf + zn) / (zf - zn);
 
 
 		result[3][2] = - 1.0f;
-		result[2][3] = -(2 * zf * zn) / (zf - zn);
+		result[2][3] = -(2.0f * zf * zn) / (zf - zn);
 
 		return result;
 	}
@@ -779,4 +808,6 @@ namespace TinyMath
 			1.0f - 2.0f * xsq - 2.0f * ysq
 		};
 	}
+
 }
+typedef TinyMath::Vec4u8i Color;

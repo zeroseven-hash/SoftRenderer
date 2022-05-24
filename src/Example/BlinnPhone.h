@@ -5,9 +5,8 @@
 #include"Renderer/Math.h"
 #include"Renderer/Buffer.h"
 #include"Renderer/Shader.h"
-#include"Renderer/Renderer.h"
 #include"Renderer/Camera.h"
-
+#include"Renderer/FrameBuffer.h"
 
 #include"rttr/registration.h"
 using namespace TinyMath;
@@ -18,30 +17,32 @@ struct PosColorCoordVertex
     Vec2f coords_;
 };
 
-class BlinnShader :public Shader
+
+template<typename Context= ShaderContextDefault>
+class BlinnShader :public Shader<Context>
 {
 public:
     
     template<typename VAO>
-    TinyMath::Vec4f VertexShader(const VAO& vao, int index, ShaderContext& output) const
+    TinyMath::Vec4f VertexShader(const VAO& vao, int index, void* context) const
     {
+        auto output = (Context*)context;
         const auto& v = vao.get_vertex(index);
-        output.varying_vec4f_[VARYING_COLOR] = v.color_;
-        output.varying_vec2f_[VARYING_COORD] = v.coords_;
-        return u_mvp*v.pos_;
+        output->o_color_ = v.color_;
+        output->o_coords = v.coords_;
+        return u_mvp * v.pos_;
     }
 
-    TinyMath::Vec4f FragmentShader(ShaderContext& input) const
+    TinyMath::Vec4f FragmentShader(void* context) const
     {
-        Vec2f corrds = input.varying_vec2f_[VARYING_COORD];
+        auto input = (Context*)context;
         //return input.varying_vec4f_[VARYING_COLOR];
-        return m_textures[u_diffuse]->Sample2D(corrds).TransformToVec();
+        return TinyMath::TransformToVec4(m_textures[u_diffuse]->Sampler2D(input->o_coords));
+        
     }
 
     
 public:
-    const int VARYING_COLOR = 0;
-    const int VARYING_COORD = 1;
     
     //uniform 
     TinyMath::Mat4f u_mvp;
@@ -52,9 +53,9 @@ public:
 
 RTTR_REGISTRATION
 {
-    rttr::registration::class_<BlinnShader>("BlinnShader")
+    rttr::registration::class_<BlinnShader<>>("BlinnShader")
     .constructor<>()
-    .property("u_diffuse",&BlinnShader::u_diffuse);
+    .property("u_diffuse",&BlinnShader<>::u_diffuse);
 }
 
 class BlinnPhone :public Scene
@@ -79,9 +80,8 @@ private:
     shared_ptr<Model<PosColorCoordVertex>> m_model;
 
 
-    BlinnShader m_blinn_shader;
+    BlinnShader<> m_blinn_shader;
 
-    Renderer m_renderer;
 
     
 };

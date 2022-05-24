@@ -6,7 +6,7 @@ void Camera::update(float dt, const Input::MouseState& mousestate, bool update_f
 {
 	float deltax = (mousestate.x_ - m_last_mouse_state.x_) * 0.002f;
 	float deltay = (mousestate.y_ - m_last_mouse_state.y_) * 0.002f;
-	float deltaz = (mousestate.z_ - m_last_mouse_state.z_) * 0.1;
+	float deltaz = (mousestate.z_ - m_last_mouse_state.z_) * 0.1f;
 	m_last_mouse_state = mousestate;
 
 

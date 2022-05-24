@@ -5,48 +5,34 @@
 #include<cstring>
 #include<functional>
 #include<thread>
-//#include<omp.h>
 
 #include"Math.h"
 #include"Buffer.h"
 #include"Shader.h"
+#include"Timer.h"
+#include"Texture.h"
+#include"FrameBuffer.h"
+#include"Thread/ThreadPool.h"
 typedef int BufferFlag;
+typedef int RenderFlag;
 
 enum BufferFlag_
 {
-	DEPTH_BUFFER_BIT=Bit(0),
-	COLOR_BUFFER_BIT=Bit(1)
+	DEPTH_BUFFER_BIT=BIT(0),
+	COLOR_BUFFER_BIT=BIT(1)
+};
+
+enum RenderFlag_
+{
+	FACE_CULL=BIT(0),
+	DRAW_PIXEL=BIT(1),
+	DRAW_LINE=BIT(2)
 };
 
 
-
-struct Color
+struct alignas(64) Vertex
 {
-	uint8_t r_ = 0, g_ = 0, b_ = 0, a_ = 0;
-	Color() = default;
-	Color(uint8_t r, uint8_t g, uint8_t b, uint8_t a) :r_(r), g_(g), b_(b), a_(a) {}
-	Color(const TinyMath::Vec4f& color)
-	{
-		r_ = (uint8_t)TinyMath::Between(0, 255, (int)(color.r_ * 255));
-		g_ = (uint8_t)TinyMath::Between(0, 255, (int)(color.g_ * 255));
-		b_ = (uint8_t)TinyMath::Between(0, 255, (int)(color.b_ * 255));
-		a_ = (uint8_t)TinyMath::Between(0, 255, (int)(color.a_ * 255));
-	}
-	TinyMath::Vec4f TransformToVec()
-	{
-		TinyMath::Vec4f res;
-		res.r_ = TinyMath::Between(0.0f, 1.0f, (float)this->r_ / 255);
-		res.g_ = TinyMath::Between(0.0f, 1.0f, (float)this->g_ / 255);
-		res.b_ = TinyMath::Between(0.0f, 1.0f, (float)this->b_ / 255);
-		res.a_ = TinyMath::Between(0.0f, 1.0f, (float)this->a_ / 255);
-
-		
-		return res;
-	}
-};
-struct Vertex
-{
-	ShaderContext context_;
+	float* context_;
 	float rhw_;
 	TinyMath::Vec4f pos_;
 	TinyMath::Vec2f center_;		//像素中心 float
@@ -54,133 +40,52 @@ struct Vertex
 };
 
 
-class Canvas
-{
-public:
-	Canvas() = default;
-	Canvas(const char* filepath) { LoadFile(filepath); }
-	inline Canvas(int width, int height) :m_width(width), m_height(height), m_channel(4)
-	{
-		m_bits = new uint8_t[m_width * m_channel * m_height];
-		Fill(Color(0,0,0,0));
-	}
-	inline Canvas(const Canvas& canvas) : m_width(canvas.m_width), m_height(canvas.m_height), m_channel(canvas.m_channel)
-	{
-		m_bits = new uint8_t[m_width * m_channel * m_height];
-		memcpy(m_bits, canvas.m_bits, m_width * m_channel * m_height);
-	}
-	inline ~Canvas() { if (m_bits)delete[] m_bits; m_bits = nullptr; }
-public:
-	
-	inline void Fill(const Color& color)
-	{
-		for (int i = 0; i < m_height; i++)
-		{
-			uint8_t* row = (uint8_t*)(m_bits + i * m_channel * m_width);
-			for (int j = 0; j < m_width; j++, row+=4)
-				memcpy(row, &color, sizeof(Color));
-		}
-	}
-	void DrawLine(int x1, int y1, int x2, int y2, const Color& color);
-	void LoadFile(const char* filename);
-	void SaveFileBMP(const char* filename);
-	Color Sample2D(const TinyMath::Vec2f& tex_coords);
-	static inline Color LinearInterp(const Color& a, const Color& b, float t)
-	{
-		Color c;
-		c.r_ = a.r_ + (b.r_ - a.r_) * t;
-		c.g_ = a.g_ + (b.g_ - a.g_) * t;
-		c.b_ = a.b_ + (b.b_ - a.b_) * t;
-		c.a_ = a.a_ + (b.a_ - a.a_) * t;
-		return c;
-	}
-public:
-	inline void set_pixel(int x, int y, const Color& color)
-	{
-		if (x >= 0 && x < m_width && y >= 0 && y < m_height)
-		{
-			memcpy(m_bits + y * m_width * m_channel + x * m_channel, &color, sizeof(Color));
-		}
-	}
-
-	inline Color get_pixel(int x, int y)
-	{
-		Color color;
-		if (x >= 0 && x < m_width && y >= 0 && y < m_height)
-		{
-			memcpy(&color, m_bits + y * m_width * m_channel + x * m_channel, sizeof(color));
-		}
-		return color;
-	}
-	inline uint32_t get_pixel1(int x,int y)
-	{
-		uint32_t color;
-		if (x >= 0 && x < m_width && y >= 0 && y < m_height)
-		{
-			memcpy(&color, m_bits + y * m_width * m_channel + x * m_channel, sizeof(uint32_t));
-		}
-		return color;
-	}
-	uint8_t* get_bits() { return m_bits; }
-private:
-	int32_t m_width;
-	int32_t m_height;
-	int32_t m_channel;
-	uint8_t* m_bits;
-};
-
-
 
 class Renderer
 {
 public:
-	inline Renderer()
-	{
-		m_canvas = nullptr;
-		m_depth_buffer = NULL;
-		m_render_line = false;
-		m_render_pixel = true;
-	}
-
-	inline Renderer(int width, int height)
-	{
-		m_canvas = nullptr;
-		m_depth_buffer = NULL;
-		m_render_line = false;
-		m_render_pixel = true;
-		Init(width, height);
-		
-	}
-	inline ~Renderer(){}
+	Renderer() = delete;
+	inline ~Renderer() { if (m_default_buffer) delete m_default_buffer; }
 public:
-	void Init(int width,int height);
-	void Clear(BufferFlag flag);
-
-
-
-	template<typename VAO, typename SHADER>
-	void DrawTriangle(const VAO& vao, SHADER& shader, uint32_t* indices)
+	static void Init(uint32_t width,uint32_t height);
+	static void Clear(BufferFlag flag,const Color& color=Color(0x00,0x00,0x00,0x00d),float depth=1.0f);
+	static void Bind(FrameBuffer* fb);
+	static void UnBind();
+	static void SetViewPort(uint32_t width, uint32_t height);
+	static void LineColor(const Color& color) { m_color_fg = color; }
+	static void SetState(RenderFlag_ flag) { m_render_flag = flag; }
+	static void FlushFrame();
+	static void FlushFrame(FrameBuffer* fb, int attachment);
+	static void Destory()
 	{
-		if (m_canvas == nullptr) return;
+		if (m_default_buffer) delete m_default_buffer;
+		for (int i = 0; i < 4; i++)
+		{
+			if (m_temp_buffer[i]) delete m_temp_buffer[i];
+		}
+		m_thread_pool.Stop();
+	}
+	template<typename VAO, typename SHADER>
+	static void DrawTriangle(const VAO& vao, SHADER& shader, uint32_t* indices,int theard_num)
+	{
+		int min_x = 0, max_x = 0;
+		int min_y = 0, max_y = 0;
 		for (int k = 0;k < 3;k++)
 		{
-			Vertex& v = m_vertex[k];
-			v.context_.varying_float_.clear();
-			v.context_.varying_vec2f_.clear();
-			v.context_.varying_vec3f_.clear();
-			v.context_.varying_vec4f_.clear();
-
+			Vertex& v = m_vertex[theard_num][k];
+			
+			v.context_ = shader.get_input_context(k, theard_num);
 			v.pos_ = shader.VertexShader(vao, indices[k], v.context_);
 
 			//裁剪 pos(nx,ny,n^2,z);x y should between [-1,1],n could be near or far
 
 			//w_>0;
 			float w = v.pos_.w_;
-			if (w == 0.0f)return;
+			if (w == 0.0f)   return; 
 
-			if (v.pos_.z_<-w || v.pos_.z_>w)return;
-			if (v.pos_.x_<-w || v.pos_.x_>w)return;
-			if (v.pos_.y_<-w || v.pos_.y_>w)return;
+			if (v.pos_.x_<-w || v.pos_.x_>w)  return;
+			if (v.pos_.y_<-w || v.pos_.y_>w)  return;
+			if (v.pos_.z_<-w || v.pos_.z_>w)  return;
 
 
 			v.rhw_ = 1.0f / w;
@@ -199,54 +104,65 @@ public:
 
 			if (k == 0)
 			{
-				m_min_x = m_max_x = TinyMath::Between(0, m_width - 1, v.coords_.x_);
-				m_min_y = m_max_y = TinyMath::Between(0, m_height - 1, v.coords_.y_);
+				min_x = max_x = TinyMath::Between(0, m_width - 1, v.coords_.x_);
+				min_y = max_y = TinyMath::Between(0, m_height - 1, v.coords_.y_);
 			}
 			else
 			{
-				m_min_x = TinyMath::Between(0, m_width - 1, std::min(m_min_x, v.coords_.x_));
-				m_max_x = TinyMath::Between(0, m_width - 1, std::max(m_max_x, v.coords_.x_));
-				m_min_y = TinyMath::Between(0, m_height - 1, std::min(m_min_y, v.coords_.y_));
-				m_max_y = TinyMath::Between(0, m_height - 1, std::max(m_max_y, v.coords_.y_));
+				min_x = TinyMath::Between(0, m_width - 1, std::min(min_x, v.coords_.x_));
+				max_x = TinyMath::Between(0, m_width - 1, std::max(max_x, v.coords_.x_));
+				min_y = TinyMath::Between(0, m_height - 1, std::min(min_y, v.coords_.y_));
+				max_y = TinyMath::Between(0, m_height - 1, std::max(max_y, v.coords_.y_));
 			}
 		}
-		//绘制线框
-		if (m_render_line)
-		{
-			m_canvas->DrawLine(m_vertex[0].coords_.x_, m_vertex[0].coords_.y_, m_vertex[1].coords_.x_, m_vertex[1].coords_.y_, m_color_fg);
-			m_canvas->DrawLine(m_vertex[0].coords_.x_, m_vertex[0].coords_.y_, m_vertex[2].coords_.x_, m_vertex[2].coords_.y_, m_color_fg);
-			m_canvas->DrawLine(m_vertex[2].coords_.x_, m_vertex[2].coords_.y_, m_vertex[1].coords_.x_, m_vertex[1].coords_.y_, m_color_fg);
-		}
-		if (!m_render_pixel) return;
 
-		TinyMath::Vec4f v01 = m_vertex[1].pos_ - m_vertex[0].pos_;
-		TinyMath::Vec4f v02 = m_vertex[2].pos_ - m_vertex[0].pos_;
+	
+		////绘制线框
+		//if (m_render_flag&DRAW_LINE)
+		//{
+		//	m_canvas->DrawLine(m_vertex[0].coords_.x_, m_vertex[0].coords_.y_, m_vertex[1].coords_.x_, m_vertex[1].coords_.y_, m_color_fg);
+		//	m_canvas->DrawLine(m_vertex[0].coords_.x_, m_vertex[0].coords_.y_, m_vertex[2].coords_.x_, m_vertex[2].coords_.y_, m_color_fg);
+		//	m_canvas->DrawLine(m_vertex[2].coords_.x_, m_vertex[2].coords_.y_, m_vertex[1].coords_.x_, m_vertex[1].coords_.y_, m_color_fg);
+		//}
+		if (!(m_render_flag&DRAW_PIXEL)) return;
+
+		TinyMath::Vec4f v01 = m_vertex[theard_num][1].pos_ - m_vertex[theard_num][0].pos_;
+		TinyMath::Vec4f v02 = m_vertex[theard_num][2].pos_ - m_vertex[theard_num][0].pos_;
 		TinyMath::Vec4f normal = v01.Cross(v02);
 
-		Vertex* vs[3] = { &m_vertex[0],&m_vertex[1] ,&m_vertex[2] };
-		if (normal.z_ < 0.0f)
-			std::swap(vs[1], vs[2]);
-		else if (normal.z_ == 0.0f)
-			return;
+		//back face cull
+		Vertex* vs[3] = { &m_vertex[theard_num][0],&m_vertex[theard_num][1] ,&m_vertex[theard_num][2]};
+		
+		if (m_render_flag & FACE_CULL)
+		{
+			if (normal.z_ <= 0.0) return;
+		}
+		else
+		{
+			if (normal.z_ < 0.0f)
+				std::swap(vs[1], vs[2]);
+			else if (normal.z_ == 0.0f)
+				return;
+		}
 
 		TinyMath::Vec2i p[3] = { vs[0]->coords_,vs[1]->coords_ ,vs[2]->coords_ };
 
 		// 计算面积，为零就退出
-		float s = std::abs((p[1] - p[0]).Cross(p[2] - p[0]));
-		if (s <= 0) return;
+		int si = std::abs((p[1] - p[0]).Cross(p[2] - p[0]));
+		if (si <= 0) return;
 
 		bool TopLeft01 = IsTopLeft(p[0], p[1]);
 		bool TopLeft12 = IsTopLeft(p[1], p[2]);
 		bool TopLeft20 = IsTopLeft(p[2], p[0]);
+		float* i0 = vs[0]->context_;
+		float* i1 = vs[1]->context_;
+		float* i2 = vs[2]->context_;
 
-		ShaderContext input[2];
-
-		auto func = [&](int x_min, int x_max,ShaderContext& input)
+//#pragma omp parallel for schdule(static,200)
+		for (int y = min_y; y <= max_y; y++)
 		{
-			for (int x = x_min; x <= x_max; x++) for (int y = m_min_y; y <= m_max_y; y++)
+			for (int x = min_x; x <= max_x; x++)
 			{
-				TinyMath::Vec2f pixel = { (float)x + 0.5f,(float)y + 0.5f };
-
 				// Edge Equation
 				// 使用整数避免浮点误差，同时因为是左手系，所以符号取反
 				int E01 = -(x - p[0].x_) * (p[1].y_ - p[0].y_) + (y - p[0].y_) * (p[1].x_ - p[0].x_);
@@ -256,12 +172,13 @@ public:
 
 				// 如果是左上边，用 E >= 0 判断合法，如果右下边就用 E > 0 判断合法
 				// 这里通过引入一个误差 1 ，来将 < 0 和 <= 0 用一个式子表达
-				if (E01 < (TopLeft01 ? 0 : 1)) return;   // 在第一条边后面
-				if (E12 < (TopLeft12 ? 0 : 1)) return;   // 在第二条边后面
-				if (E20 < (TopLeft20 ? 0 : 1)) return;   // 在第三条边后面
+				if (E01 < (TopLeft01 ? 0 : 1)) continue;   // 在第一条边后面
+				if (E12 < (TopLeft12 ? 0 : 1)) continue;   // 在第二条边后面
+				if (E20 < (TopLeft20 ? 0 : 1)) continue;   // 在第三条边后面
 
 
 				// 三个端点到当前点的矢量
+				TinyMath::Vec2f pixel = { (float)x + 0.5f,(float)y + 0.5f };
 				TinyMath::Vec2f s0 = vs[0]->center_ - pixel;
 				TinyMath::Vec2f s1 = vs[1]->center_ - pixel;
 				TinyMath::Vec2f s2 = vs[2]->center_ - pixel;
@@ -272,20 +189,24 @@ public:
 				float c = std::abs(s0.Cross(s1));    // 子三角形 Px-P0-P1 面积
 				float s = a + b + c;                 // 大三角形 P0-P1-P2 面积
 
-				if (s == 0.0f) return;
+				if (s == 0.0f) continue;
 
 				// Barycentric coordinates interpolation
-				a = a * (1.0f / s);
-				b = b * (1.0f / s);
-				c = c * (1.0f / s);
+				a /= s;
+				b /= s;
+				c /= s;
 
 				//深度以及其倒数在可以直接使用重心插值
+				float z0 = (vs[0]->pos_.z_ + 1.0f) / 2.0f;
+				float z1 = (vs[1]->pos_.z_ + 1.0f) / 2.0f;
+				float z2 = (vs[2]->pos_.z_ + 1.0f) / 2.0f;
+				float depth = a * z0 + b * z1 + c * z2;
 				float rhw = vs[0]->rhw_ * a + vs[1]->rhw_ * b + vs[2]->rhw_ * c;
 
 				//depth_buffer数组下标和x,y相反
-				if (rhw < m_depth_buffer[y][x])return;
-				m_depth_buffer[y][x] = rhw;
-
+				auto depth_buffer = m_temp_buffer[theard_num]->get_depth_attachment();
+				if (depth > depth_buffer->get_depth(x, y))continue;
+				depth_buffer->set_depth(x, y, depth);
 				float w = 1.0f / ((rhw != 0.0f) ? rhw : 1.0f);
 
 				//透视正确插值
@@ -294,120 +215,71 @@ public:
 				float c2 = vs[2]->rhw_ * c * w;
 
 
-				ShaderContext& i0 = vs[0]->context_;
-				ShaderContext& i1 = vs[1]->context_;
-				ShaderContext& i2 = vs[2]->context_;
-
-
-				// 插值各项 varying
-				for (auto const& it : i0.varying_float_) {
-					int key = it.first;
-					float f0 = i0.varying_float_[key];
-					float f1 = i1.varying_float_[key];
-					float f2 = i2.varying_float_[key];
-					input.varying_float_[key] = c0 * f0 + c1 * f1 + c2 * f2;
-				}
-
-				for (auto const& it : i0.varying_vec2f_) {
-					int key = it.first;
-					const TinyMath::Vec2f& f0 = i0.varying_vec2f_[key];
-					const TinyMath::Vec2f& f1 = i1.varying_vec2f_[key];
-					const TinyMath::Vec2f& f2 = i2.varying_vec2f_[key];
-					input.varying_vec2f_[key] = c0 * f0 + c1 * f1 + c2 * f2;
-				}
-
-				for (auto const& it : i0.varying_vec3f_) {
-					int key = it.first;
-					const TinyMath::Vec3f& f0 = i0.varying_vec3f_[key];
-					const TinyMath::Vec3f& f1 = i1.varying_vec3f_[key];
-					const TinyMath::Vec3f& f2 = i2.varying_vec3f_[key];
-					input.varying_vec3f_[key] = c0 * f0 + c1 * f1 + c2 * f2;
-				}
-
-				for (auto const& it : i0.varying_vec4f_) {
-					int key = it.first;
-					const TinyMath::Vec4f& f0 = i0.varying_vec4f_[key];
-					const TinyMath::Vec4f& f1 = i1.varying_vec4f_[key];
-					const TinyMath::Vec4f& f2 = i2.varying_vec4f_[key];
-					input.varying_vec4f_[key] = c0 * f0 + c1 * f1 + c2 * f2;
-				}
-
+				constexpr size_t count = SHADER::get_context_count();
+				float* input=shader.get_output_context(theard_num);
+				for (size_t i = 0; i < count; i++) input[i] = c0 * i0[i] + c1 * i1[i] + c2 * i2[i];
 				TinyMath::Vec4f color = shader.FragmentShader(input);
-				m_canvas->set_pixel(x, y, Color(color));
+				m_temp_buffer[theard_num]->get_attachment(0)->set_pixel_no_cache(x, y, TransformToColor(color));
+
 			}
-			
-		};
+		}
+	
 
-		
-//#pragma omp parallel for firstprivate(input) schedule(static,200) 
-		int offset = (m_max_x - m_min_x)/2;
-		static std::thread threads[2];
-		threads[0] = std::thread(func, m_min_x, m_min_x + offset, input[0]);
-		threads[1] = std::thread(func, m_min_x + offset + 1, m_max_x,input[1]);
-		/*std::thread threads0(func,m_min_x,m_min_x+offset);
-		std::thread threads1(func, m_min_x + offset + 1, m_max_x);*/
-
-		threads[0].join();
-		threads[1].join();
-
-		/*for (int x = m_min_x;x <= m_max_x;x++) for (int y = m_min_y;y <= m_max_y;y++)
-		{
-			
-		}*/
-
-		if (m_render_line)
+		/*if (m_render_flag & DRAW_LINE)
 		{
 			m_canvas->DrawLine(vs[0]->coords_.x_, vs[0]->coords_.y_, vs[1]->coords_.x_, vs[1]->coords_.y_, m_color_fg);
 			m_canvas->DrawLine(vs[0]->coords_.x_, vs[0]->coords_.y_, vs[2]->coords_.x_, vs[2]->coords_.y_, m_color_fg);
 			m_canvas->DrawLine(vs[2]->coords_.x_, vs[2]->coords_.y_, vs[1]->coords_.x_, vs[1]->coords_.y_, m_color_fg);
-		}
+		}*/
 
 	}
 
 
 	template<typename VAO, typename SHADER>
-	inline void DrawArray(const VAO& vao, SHADER& shader)
+	static inline void Submit(const VAO& vao, SHADER& shader)
 	{
 		const auto& vs = vao.get_vertices();
 		const auto& indices = vao.get_indices();
 		if (!vs.size() || !indices.size())return;
-		for (int i = 0;i < indices.size();i += 3)
+		int offset = indices.size() /12; 
+		assert(offset >= 1);
+		auto fun = [&](int left, int right, const auto& ind,int thread_num)
 		{
-			uint32_t is[3] = { (uint32_t)indices[i],(uint32_t)indices[i + 1],(uint32_t)indices[i + 2] };
-			DrawTriangle(vao,shader, is);
+			for (int i = left; i < right; i += 3)
+			{
+				uint32_t is[3] = { (uint32_t)ind[i],(uint32_t)ind[i + 1],(uint32_t)ind[i + 2] };
+				DrawTriangle(vao, shader, is, thread_num);
+			}
+		};
+		std::future<void> res[4];
+		res[0]=m_thread_pool.PushTask(fun, 0, offset * 3, indices, 0);
+		res[1]=m_thread_pool.PushTask(fun, offset * 3, offset * 6, indices, 1);
+		res[2]=m_thread_pool.PushTask(fun, 0 * 6, offset * 9, indices, 2);
+		res[3]=m_thread_pool.PushTask(fun, offset * 9, indices.size(), indices, 3);
+
+		for (int i = 0; i < 4; i++)
+		{
+			res[i].wait();
 		}
 	}
-public:
-	inline int get_width()const  { return m_width; }
-	inline int get_height()const  { return m_height; }
-	inline uint8_t* get_canvas()const { return m_canvas->get_bits(); }
-	inline void set_line_color(const Color& color) { m_color_fg = color; }
-	inline void set_clear_color(const Color& color) { m_color_bg = color; }
-	inline void set_render_state(bool pixel, bool line)
-	{
-		m_render_pixel = pixel;
-		m_render_line = line;
-	}
-protected:
-	void Reset();
-protected:
-	Canvas* m_canvas;
-	float** m_depth_buffer;
+	
+private:
+	static Vertex m_vertex[4][3];
+
+
+
+	//Buffer
+	static DepthAttachment* m_temp_buffer[4];
+	static FragmentShader[]
+	static FrameBuffer* m_buffer;
+	static FrameBuffer* m_default_buffer;
 
 	
-	Color m_color_fg;
-	Color m_color_bg;
+	static Color m_color_fg;
+	static Color m_color_bg;
 	
-	int m_width;
-	int m_height;
-
-	Vertex m_vertex[3];
-	int m_min_x;
-	int m_min_y;
-	int m_max_x;
-	int m_max_y;
-
-
-	bool m_render_line;
-	bool m_render_pixel;
+	static int m_width;
+	static int m_height;
+	static int m_render_flag;
+	static ThreadPool m_thread_pool;
 };

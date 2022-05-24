@@ -9,6 +9,7 @@
 #include<imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
+#include"Renderer/Renderer.h"
 Application* Application::s_instance = nullptr;
 Application::Application(const char* name, uint32_t width, uint32_t height)
 :m_name(name),m_width(width),m_height(height)
@@ -63,7 +64,9 @@ void Application::Init()
 
     Input::Init(window, std::bind(&Application::OnEvent, this, std::placeholders::_1));
     //init scene
+    Renderer::Init(m_width, m_height);
     if(m_scene) m_scene->Init();
+    
     
 }
 void Application::Run()
@@ -119,6 +122,7 @@ void Application::Run()
 void Application::Destory()
 {
     // Cleanup
+    Renderer::Destory();
     m_scene->Destory();
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();

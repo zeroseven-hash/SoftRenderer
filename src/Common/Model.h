@@ -9,9 +9,10 @@
 #include<assimp/postprocess.h>
 
 
-struct Texture :public Canvas
+struct TextureCompnent
 {
-    uint32_t id;
+    uint32_t id_;
+    shared_ptr<Texture2D> texture_;
     std::string type_;
     std::string path_;
 };
@@ -20,13 +21,13 @@ class Mesh
 {
 public:
     Mesh() = default;
-    Mesh(const std::vector<V>& vs, const std::vector<uint32_t>& inds, const std::vector<Texture> texs)
+    Mesh(const std::vector<V>& vs, const std::vector<uint32_t>& inds, const std::vector<TextureCompnent> texs)
         :m_textures(texs)
     {
         m_vao.set_vertices(vs);
         m_vao.set_indices(inds);
     }
-    Mesh(std::vector<V>&& vs, std::vector<uint32_t>&& inds, std::vector<Texture>&& texs)
+    Mesh(std::vector<V>&& vs, std::vector<uint32_t>&& inds, std::vector<TextureCompnent>&& texs)
         :m_textures(std::move(texs))
     {
         m_vao.set_vertices(std::move(vs));
@@ -35,24 +36,24 @@ public:
 public:
 
     template<typename SHADER>
-    void Draw(Renderer& renderer, SHADER& shader)
+    void Draw(SHADER& shader)
     {
         for (uint32_t i = 0; i < m_textures.size(); i++)
         {
             std::string& name = m_textures[i].type_;
-            if (name == "texture_diffuse") shader.SetTexture("u_diffuse", 0, (Canvas*)&m_textures[i]);
+            if (name == "texture_diffuse") shader.SetTexture("u_diffuse", 0, m_textures[i].texture_.get());
            // m_textures[i].SaveFileBMP("texture.bmp");
         }
-        renderer.DrawArray(m_vao, shader);
+        Renderer::Submit(m_vao, shader);
     }
 private:
     VertexArrayBuffer<V> m_vao;
-    std::vector<Texture> m_textures;
+    std::vector<TextureCompnent> m_textures;
 };
 
-class aiNode;
-class aiScene;
-class aiMesh;
+struct aiNode;
+struct aiScene;
+struct aiMesh;
 template<typename V>
 class Model
 {
@@ -67,14 +68,14 @@ public:
     void LoadModel(const char* path);
 
     template<typename SHADER>
-    void Draw(Renderer& renderer, SHADER& shader)
+    void Draw(SHADER& shader)
     {
-        for (size_t i = 0; i < m_meshes.size(); i++) m_meshes[i].Draw(renderer, shader);
+        for (size_t i = 0; i < m_meshes.size(); i++) m_meshes[i].Draw(shader);
     }
 private:
     void ProcessNode(aiNode* node, const aiScene* scene);
     Mesh<V> ProcessMesh(aiMesh* mesh, const aiScene* scene);
-    std::vector<Texture> LoadMaterialTextures(aiMaterial* mat, aiTextureType type, const std::string& type_name);
+    std::vector<TextureCompnent> LoadMaterialTextures(aiMaterial* mat, aiTextureType type, const std::string& type_name);
 private:
     std::vector<Mesh<V>> m_meshes;
     std::string m_dir;
@@ -117,7 +118,7 @@ Mesh<V> Model<V>::ProcessMesh(aiMesh* mesh, const aiScene* scene)
 {
     std::vector<V> vertices;
     std::vector<uint32_t> indices;
-    std::vector<Texture> textures;
+    std::vector<TextureCompnent> textures;
     for (size_t i = 0; i < mesh->mNumVertices; i++)
     {
         V vertex;
@@ -140,7 +141,7 @@ Mesh<V> Model<V>::ProcessMesh(aiMesh* mesh, const aiScene* scene)
     }
 
     aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
-    std::vector<Texture> diffuse_maps = LoadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
+    std::vector<TextureCompnent> diffuse_maps = LoadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
     textures.insert(textures.end(), diffuse_maps.begin(), diffuse_maps.end());
     // std::vector<Texture> specular_maps = LoadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
     // textures.insert(textures.end(), specular_maps.begin(), specular_maps.end());
@@ -152,19 +153,20 @@ Mesh<V> Model<V>::ProcessMesh(aiMesh* mesh, const aiScene* scene)
     return Mesh<V>(std::move(vertices), std::move(indices), std::move(textures));
 }
 template<typename V>
-std::vector<Texture> Model<V>::LoadMaterialTextures(aiMaterial* mat, aiTextureType type, const std::string& type_name)
+std::vector<TextureCompnent> Model<V>::LoadMaterialTextures(aiMaterial* mat, aiTextureType type, const std::string& type_name)
 {
     static int texturescount = 0;
-    std::vector<Texture> textures;
+    std::vector<TextureCompnent> textures;
     for (uint32_t i = 0; i < mat->GetTextureCount(type); i++)
     {
         aiString str;
         mat->GetTexture(type, i, &str);
-        Texture texture;
+        TextureCompnent texture;
         std::string filename = std::string(str.C_Str());
         filename = m_dir + '/' + filename;
-        texture.LoadFile(filename.c_str());
-        texture.id = texturescount++;
+        texture.texture_ = std::make_shared<Texture2D>(TextureLayout::LINEAR);
+        texture.texture_->LoadFile(filename.c_str(),SAMPLER_LINEAR|SAMPLER_REPEAT);
+        texture.id_ = texturescount++;
         texture.type_ = type_name;
         textures.push_back(texture);
     }
