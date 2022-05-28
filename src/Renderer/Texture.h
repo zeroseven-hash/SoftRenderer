@@ -193,6 +193,12 @@ public:
 		m_depth = new float[width * height];
 		Fill(1.0f);
 	}
+
+	void BuiltAll(DepthAttachment& other)
+	{
+		assert(other.m_width == m_width && other.m_height == m_height);
+		memcpy(other.m_depth, m_depth, m_width*m_height*sizeof(float));
+	}
 	float get_depth(int x, int y)
 	{
 		return m_depth[y * m_width + x];

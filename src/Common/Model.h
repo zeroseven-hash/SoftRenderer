@@ -165,7 +165,7 @@ std::vector<TextureCompnent> Model<V>::LoadMaterialTextures(aiMaterial* mat, aiT
         std::string filename = std::string(str.C_Str());
         filename = m_dir + '/' + filename;
         texture.texture_ = std::make_shared<Texture2D>(TextureLayout::LINEAR);
-        texture.texture_->LoadFile(filename.c_str(),SAMPLER_LINEAR|SAMPLER_REPEAT);
+        texture.texture_->LoadFile(filename.c_str(),SAMPLER_NEARST|SAMPLER_REPEAT);
         texture.id_ = texturescount++;
         texture.type_ = type_name;
         textures.push_back(texture);

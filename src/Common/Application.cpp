@@ -33,7 +33,7 @@ void Application::Init()
     glfwMakeContextCurrent(window);
     gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 
-    glfwSwapInterval(1); // Enable vsync
+    glfwSwapInterval(0); // Enable vsync
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();

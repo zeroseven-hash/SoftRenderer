@@ -22,11 +22,12 @@ class Shader
 public:
 
     template<typename VAO>
-    TinyMath::Vec4f VertexShader(const VAO& vao, int index, void* context)const{}
+    TinyMath::Vec4f VertexShader(const VAO& vao, int index, Context& context)const{}
 
 
-    TinyMath::Vec4f FragmentShader(void* input)const{}
+    TinyMath::Vec4f FragmentShader(const Context& input)const{}
 
+    Context get_context_type() {Context a; return a; }
     static constexpr size_t get_context_count() {  return sizeof(Context)/sizeof(float); }
     float* get_input_context(int index,int thread) { return (float*)&m_input[thread][index]; }
     float* get_output_context(int thread) { return (float*)&m_output[thread]; }

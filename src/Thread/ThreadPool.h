@@ -6,6 +6,13 @@
 #include<vector>
 #include<queue>
 #include<future>
+
+#define CORE_NUM 4
+template<typename T>
+struct alignas(64) ThreadDataWrapper
+{
+	T data_;
+};
 class ThreadPool
 {
 public:
@@ -57,7 +64,6 @@ public:
 				{
 					Task task;
 					{
-
 						std::unique_lock<std::mutex> lock(m_mutex);
 						m_signal.wait(lock, [&] {return m_stop || !m_tasks.empty(); });
 						if (m_stop && m_tasks.empty()) break;
@@ -67,7 +73,7 @@ public:
 					}
 					task();
 				}
-				});
+			});
 		}
 	}
 
@@ -86,5 +92,6 @@ private:
 	std::condition_variable m_signal;
 	std::mutex m_mutex;
 	bool m_stop = false;
+	int m_thread_num;
 
 };

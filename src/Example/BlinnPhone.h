@@ -24,21 +24,18 @@ class BlinnShader :public Shader<Context>
 public:
     
     template<typename VAO>
-    TinyMath::Vec4f VertexShader(const VAO& vao, int index, void* context) const
+    TinyMath::Vec4f VertexShader(const VAO& vao, int index, Context& context) const
     {
-        auto output = (Context*)context;
         const auto& v = vao.get_vertex(index);
-        output->o_color_ = v.color_;
-        output->o_coords = v.coords_;
+        context.o_color_ = v.color_;
+        context.o_coords = v.coords_;
         return u_mvp * v.pos_;
     }
 
-    TinyMath::Vec4f FragmentShader(void* context) const
+    TinyMath::Vec4f FragmentShader(const Context& context) const
     {
-        auto input = (Context*)context;
-        //return input.varying_vec4f_[VARYING_COLOR];
-        return TinyMath::TransformToVec4(m_textures[u_diffuse]->Sampler2D(input->o_coords));
-        
+       
+        return TinyMath::TransformToVec4(m_textures[u_diffuse]->Sampler2D(context.o_coords));        
     }
 
     
