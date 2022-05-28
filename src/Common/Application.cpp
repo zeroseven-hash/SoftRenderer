@@ -64,6 +64,7 @@ void Application::Init()
 
     Input::Init(window, std::bind(&Application::OnEvent, this, std::placeholders::_1));
     //init scene
+ 
     Renderer::Init(m_width, m_height);
     if(m_scene) m_scene->Init();
     

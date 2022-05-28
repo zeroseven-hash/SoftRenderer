@@ -79,7 +79,7 @@ public:
 		}
 	}
 public:
-	Texture2D* get_attachment(int index)
+	Texture2D* get_attachment(int index=0)
 	{
 		assert(index < m_tex_attachments.size());
 		return m_tex_attachments[index];

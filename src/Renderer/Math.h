@@ -311,7 +311,7 @@ namespace TinyMath
 		Vector<N,T> res;
 		for (int i = 0;i < N;i++)
 		{
-			res.m_[i] = v1.m_[i] + (v2.m_[i] - v1.m_[i]) * t;
+			res.m_[i] = static_cast<T>(v1.m_[i] + (v2.m_[i] - v1.m_[i]) * t);
 		}
 		return res;
 	}

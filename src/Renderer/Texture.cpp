@@ -171,7 +171,7 @@ Color Texture2D::Sampler2D(const TinyMath::Vec2f& uv)const
 		Color res = TinyMath::LinerInterpolation(c1, c2, dy);
 		return res;
 	}
-	default: break;
+	default: return Color(0x00,0x00,0x00,0xff);
 	}
 	
 

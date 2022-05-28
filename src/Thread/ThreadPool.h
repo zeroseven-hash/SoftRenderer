@@ -7,7 +7,7 @@
 #include<queue>
 #include<future>
 
-#define CORE_NUM 4
+
 template<typename T>
 struct alignas(64) ThreadDataWrapper
 {
@@ -17,46 +17,52 @@ class ThreadPool
 {
 public:
 	using Task = std::function<void()>;
-	explicit ThreadPool(uint32_t thread_nums)
+	
+	static void Init(uint32_t thread_num)
 	{
-		Start(thread_nums);
+		Get().Start(thread_num);
 	}
+	
+	static ThreadPool& Get()
+	{
+		static ThreadPool s_instance;
+		return s_instance;
+	}
+
 	~ThreadPool()
 	{
 		Stop();
 	}
 
-	void Lock()
+	static uint32_t GetThreadNums()
 	{
-		m_mutex.lock();
+		return Get().m_thread_num;
 	}
-	void UnLock()
-	{
-		m_mutex.unlock();
-	}
-	void Join()
-	{
-		for (auto& thread : m_threads) thread.join();
-	}
+	
 	template<typename T, typename ...Args>
-	auto PushTask(T task, Args&&... args)->std::future<decltype(task(args...))>
+	static auto PushTask(T task, Args&&... args)->std::future<decltype(task(args...))>
 	{
+		auto& s_instance = ThreadPool::Get();
 		auto wrapper = std::make_shared<std::packaged_task<decltype(task(args...))()>>(std::bind(std::forward<T>(task), std::forward<Args>(args)...));
 
 
 		{
-			std::unique_lock<std::mutex> lock(m_mutex);
-			m_tasks.emplace([wrapper] {
+			std::unique_lock<std::mutex> lock(s_instance.m_mutex);
+			s_instance.m_tasks.emplace([wrapper] {
 				(*wrapper)();
 				});
 		}
-		m_signal.notify_one();
+		s_instance.m_signal.notify_one();
 		return wrapper->get_future();
 	}
-public:
+
+
+private:
+	ThreadPool() = default;
 	void Start(uint32_t thread_nums)
 	{
-		for (int i = 0; i < thread_nums; i++)
+		m_thread_num = thread_nums;
+		for (uint32_t i = 0; i < thread_nums; i++)
 		{
 			m_threads.emplace_back([&] {
 
@@ -84,14 +90,15 @@ public:
 			m_stop = true;
 		}
 		m_signal.notify_all();
-		Join();
+		for (auto& thread : m_threads) thread.join();
 	}
 private:
+
 	std::vector<std::thread> m_threads;
 	std::queue<Task> m_tasks;
 	std::condition_variable m_signal;
 	std::mutex m_mutex;
 	bool m_stop = false;
-	int m_thread_num;
+	uint32_t m_thread_num=1;
 
 };
