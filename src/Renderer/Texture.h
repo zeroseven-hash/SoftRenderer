@@ -103,7 +103,7 @@ public:
 	void LoadFile(const char* filename,TextureFlag_ texture_flag_=0);
 	void SaveBMPFile(const char* filename);
 
-	Color Sampler2D(const TinyMath::Vec2f& uv)const;
+	TinyMath::Vec4f Sampler2D(const TinyMath::Vec2f& uv)const;
 
 	/*
 	* width:width

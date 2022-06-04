@@ -91,7 +91,7 @@ void Texture2D::SaveBMPFile(const char* filename)
 	stbi_write_bmp(filename, m_width, m_height, m_channel, m_bits);
 }
 
-Color Texture2D::Sampler2D(const TinyMath::Vec2f& uv)const
+TinyMath::Vec4f Texture2D::Sampler2D(const TinyMath::Vec2f& uv)const
 {
 	//cal uv
 	auto norm_uv = uv;
@@ -116,7 +116,7 @@ Color Texture2D::Sampler2D(const TinyMath::Vec2f& uv)const
 	{
 		for (int i = 0; i < 2; i++)
 		{
-			if (norm_uv[i] > 1.0f || norm_uv[i] < 0.0f) return Color{ 0xff,0xff,0xff,0xff };
+			if (norm_uv[i] > 1.0f || norm_uv[i] < 0.0f) return TinyMath::Vec4f(0.0f,0.0f,0.0f,1.0f);
 		}
 		break;
 	}
@@ -136,7 +136,7 @@ Color Texture2D::Sampler2D(const TinyMath::Vec2f& uv)const
 		assert(x >= 0 && x < m_width);
 		assert(y >= 0 && y < m_height);
 
-		return get_pixel(x, y);
+		return TinyMath::TransformToVec4(get_pixel(x, y));
 	}
 	case Filter::LINEAR:
 	{
@@ -169,9 +169,9 @@ Color Texture2D::Sampler2D(const TinyMath::Vec2f& uv)const
 		
 		
 		Color res = TinyMath::LinerInterpolation(c1, c2, dy);
-		return res;
+		return TinyMath::TransformToVec4(res);
 	}
-	default: return Color(0x00,0x00,0x00,0xff);
+	default: return TinyMath::Vec4f(0.0f,0.0f,0.0f,0.0f);
 	}
 	
 

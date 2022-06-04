@@ -4,7 +4,7 @@
 #include"Texture.h"
 
 #include<unordered_map>
-#include"rttr/registration.h"
+#include<functional>
 //only supprt
 struct ShaderContextDefault
 {
@@ -20,28 +20,22 @@ template<typename Context=ShaderContextDefault>
 class Shader
 {
 public:
+    using ContextType = Context;
 
+
+    //vertex shader
     template<typename VAO>
     TinyMath::Vec4f VertexShader(const VAO& vao, int index, Context& context)const{}
 
-
+    //fragmentshader
     TinyMath::Vec4f FragmentShader(const Context& input)const{}
 
-    Context get_context_type() {Context a; return a; }
-    static constexpr size_t get_context_count() {  return sizeof(Context)/sizeof(float); }
-    float* get_input_context(int index,int thread) { return (float*)&m_input[thread][index]; }
-    float* get_output_context(int thread) { return (float*)&m_output[thread]; }
-    void SetTexture(const char* sampler, int index, Texture2D* tex) { 
+    void SetTexture(int index, Texture2D* tex) { 
         assert(index < 32);
-        rttr::property prop = rttr::type::get(*this).get_property(sampler);
-        prop.set_value(*this,index);
         m_textures[index] = tex; 
     }
 
 protected:
-
-    Context m_input[4][3];  //input memory;
-    Context m_output[4];   //output memmory
     Texture2D* m_textures[32];
 
 

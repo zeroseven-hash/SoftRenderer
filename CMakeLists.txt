@@ -9,7 +9,6 @@ include_directories("${CMAKE_CURRENT_LIST_DIR}/3rdparty/glad/include")
 include_directories("${CMAKE_CURRENT_LIST_DIR}/3rdparty/assimp/include")
 include_directories("${CMAKE_CURRENT_LIST_DIR}/3rdparty/stb_image")
 include_directories("${CMAKE_CURRENT_LIST_DIR}/3rdparty/imgui")
-include_directories("${CMAKE_CURRENT_LIST_DIR}/3rdparty/rttr/src")
 
 #organize files
 foreach(FILE ${all_files})
@@ -26,6 +25,6 @@ add_subdirectory(./3rdparty)
 set(CMAKE_CXX_STANDARD 17)
 
 add_executable(SoftRenderer "${all_files}")
-target_link_libraries(SoftRenderer glfw GLAD imgui rttr_core_lib assimp)
+target_link_libraries(SoftRenderer glfw GLAD imgui assimp)
 
 target_include_directories(SoftRenderer PRIVATE "./src")

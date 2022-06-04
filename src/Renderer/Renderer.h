@@ -61,8 +61,8 @@ public:
 	template<typename VAO, typename SHADER>
 	static inline void Submit(const VAO& vao, SHADER& shader)
 	{
-		using ShaderContext = decltype(shader.get_context_type());
-		constexpr int count = sizeof(ShaderContext) / sizeof(float);
+		
+		constexpr int count = sizeof(SHADER::ContextType) / sizeof(float);
 
 		const auto& vs = vao.get_vertices();
 		const auto& indices = vao.get_indices();
@@ -148,8 +148,7 @@ private:
 		int min_x, max_x;
 		int min_y, max_y;
 
-		using ShaderContext = decltype(shader.get_context_type());
-
+		
 		auto& context = Renderer::GetRenderContext();
 		int width = context.width_;
 		int height = context.height_;
@@ -159,7 +158,7 @@ private:
 			int count = context.input_shadercontexts_.count_;
 			v.context_ = &context.input_shadercontexts_.data_[trangle_id * count+ k * count/3];
 
-			v.pos_ = shader.VertexShader(vao, indices[k], *(ShaderContext*)v.context_);
+			v.pos_ = shader.VertexShader(vao, indices[k], *(SHADER::ContextType*)v.context_);
 
 			//裁剪 pos(nx,ny,n^2,z);x y should between [-1,1],n could be near or far
 
@@ -175,28 +174,29 @@ private:
 			v.pos_ *= v.rhw_;
 
 			
-			//x:[-1,1] to [0,width-1],y:[-1,1] to [0,height-1];
+			//x:[-1,1] to [0,width],y:[-1,1] to [0,height];
 			//	0.5*width       0	      width*0.5		    x     (x+1.0f)*0.5*width
 			//	  0	       height*0.5    height*0.5    *    y  = (y+1.0f)*0.5*height
 			//	  0             0            0	        	1 				1
-			v.center_.x_ = (v.pos_.x_ + 1.0f) *(float) width* 0.5f;
-			v.center_.y_ = (v.pos_.y_ + 1.0f) * (float)height* 0.5f;
+			v.ndc_coords_.x_ = (v.pos_.x_ + 1.0f) *(float) (width-1)* 0.5f;
+			v.ndc_coords_.y_ = (v.pos_.y_ + 1.0f) * (float)(height-1)* 0.5f;
+			v.ndc_coords_.z_ = (v.pos_.z_ + 1.0f) * 0.5f;
 
+			v.inter_coords.x_ = (int)v.ndc_coords_.x_;
+			v.inter_coords.y_ = (int)v.ndc_coords_.y_;
 
-			v.coords_.x_ = (int)(v.center_.x_ + 0.5f);
-			v.coords_.y_ = (int)(v.center_.y_ + 0.5f);
 
 			if (k == 0)
 			{
-				min_x = max_x = TinyMath::Between(0, width- 1, v.coords_.x_);
-				min_y = max_y = TinyMath::Between(0, height- 1, v.coords_.y_);
+				min_x = max_x = TinyMath::Between(0, width - 1,v.inter_coords.x_);
+				min_y = max_y = TinyMath::Between(0, height- 1,v.inter_coords.y_);
 			}
 			else
 			{
-				min_x = TinyMath::Between(0, width- 1, std::min(min_x, v.coords_.x_));
-				max_x = TinyMath::Between(0, width- 1, std::max(max_x, v.coords_.x_));
-				min_y = TinyMath::Between(0, height - 1, std::min(min_y, v.coords_.y_));
-				max_y = TinyMath::Between(0, height - 1, std::max(max_y, v.coords_.y_));
+				min_x = TinyMath::Between(0, width- 1, std::min(min_x,v.inter_coords.x_));
+				max_x = TinyMath::Between(0, width- 1, std::max(max_x,v.inter_coords.x_));
+				min_y = TinyMath::Between(0, height - 1, std::min(min_y, v.inter_coords.y_));
+				max_y = TinyMath::Between(0, height - 1, std::max(max_y, v.inter_coords.y_));
 			}
 		}
 
@@ -210,13 +210,13 @@ private:
 		//}
 		if (!(context.renderer_flag & DRAW_PIXEL)) return;
 
-		TinyMath::Vec4f v01 = context.triangles_.data_[trangle_id].vs_[1].pos_ - context.triangles_.data_[trangle_id].vs_[0].pos_;
-		TinyMath::Vec4f v02 = context.triangles_.data_[trangle_id].vs_[2].pos_ - context.triangles_.data_[trangle_id].vs_[0].pos_;
-		TinyMath::Vec4f normal = v01.Cross(v02);
+		TinyMath::Vec3f v01 = context.triangles_.data_[trangle_id].vs_[1].ndc_coords_ - context.triangles_.data_[trangle_id].vs_[0].ndc_coords_;
+		TinyMath::Vec3f v02 = context.triangles_.data_[trangle_id].vs_[2].ndc_coords_ - context.triangles_.data_[trangle_id].vs_[0].ndc_coords_;
+		TinyMath::Vec3f normal = v01.Cross(v02);
+		
 		context.triangles_.data_[trangle_id].ordered_vs_[0] = &context.triangles_.data_[trangle_id].vs_[0];
 		context.triangles_.data_[trangle_id].ordered_vs_[1] = &context.triangles_.data_[trangle_id].vs_[1];
 		context.triangles_.data_[trangle_id].ordered_vs_[2] = &context.triangles_.data_[trangle_id].vs_[2];
-
 
 		//back face cull
 		if (context.renderer_flag & FACE_CULL)
@@ -231,15 +231,17 @@ private:
 				return;
 		}
 
-		TinyMath::Vec2i p[3] = { context.triangles_.data_[trangle_id].ordered_vs_[0]->coords_,context.triangles_.data_[trangle_id].ordered_vs_[1]->coords_ ,context.triangles_.data_[trangle_id].ordered_vs_[2]->coords_ };
+
+
+		//TinyMath::Vec2i p[3] = { context.triangles_.data_[trangle_id].ordered_vs_[0]->inter_coords,context.triangles_.data_[trangle_id].ordered_vs_[1]->inter_coords ,context.triangles_.data_[trangle_id].ordered_vs_[2]->inter_coords };
 
 		// 计算面积，为零就退出
-		int si = std::abs((p[1] - p[0]).Cross(p[2] - p[0]));
-		if (si <= 0) return;
+		/*int si = std::abs((p[1] - p[0]).Cross(p[2] - p[0]));
+		if (si <= 0) return;*/
 
-		context.triangles_.data_[trangle_id].top_left01_ = IsTopLeft(p[0], p[1]);
+		/*context.triangles_.data_[trangle_id].top_left01_ = IsTopLeft(p[0], p[1]);
 		context.triangles_.data_[trangle_id].top_left12_ = IsTopLeft(p[1], p[2]);
-		context.triangles_.data_[trangle_id].top_left20_ = IsTopLeft(p[2], p[0]);
+		context.triangles_.data_[trangle_id].top_left20_ = IsTopLeft(p[2], p[0]);*/
 		context.triangles_.data_[trangle_id].tag_ = true;
 		context.triangles_.data_[trangle_id].min_x_ = min_x;
 		context.triangles_.data_[trangle_id].max_x_ = max_x;
@@ -257,9 +259,8 @@ private:
 	template<typename VAO,typename SHADER>
 	static void DrawPixel(const VAO& vao, SHADER& shader,TriangleContext& tri_context)
 	{
-		using ShaderContext = decltype(shader.get_context_type());
-		constexpr int count = sizeof(ShaderContext) / sizeof(float);
-		static ShaderContext input;
+		constexpr int count = sizeof(SHADER::ContextType) / sizeof(float);
+		static SHADER::ContextType input;
 		float* temp = (float*)&input;
 
 
@@ -275,35 +276,37 @@ private:
 		{
 			for (int x = min_x; x <= max_x; x++)
 			{
-				auto& p0 = tri_context.ordered_vs_[0]->coords_;
-				auto& p1 = tri_context.ordered_vs_[1]->coords_;
-				auto& p2 = tri_context.ordered_vs_[2]->coords_;
+				//auto& p0 = tri_context.ordered_vs_[0]->inter_coords;
+				//auto& p1 = tri_context.ordered_vs_[1]->inter_coords;
+				//auto& p2 = tri_context.ordered_vs_[2]->inter_coords;
 
-				int E01 = -(x - p0.x_) * (p1.y_ - p0.y_) + (y - p0.y_) * (p1.x_ - p0.x_);
-				int E12 = -(x - p1.x_) * (p2.y_ - p1.y_) + (y - p1.y_) * (p2.x_ - p1.x_);
-				int E20 = -(x - p2.x_) * (p0.y_ - p2.y_) + (y - p2.y_) * (p0.x_ - p2.x_);
+				//int E01 = -(x - p0.x_) * (p1.y_ - p0.y_) + (y - p0.y_) * (p1.x_ - p0.x_);
+				//int E12 = -(x - p1.x_) * (p2.y_ - p1.y_) + (y - p1.y_) * (p2.x_ - p1.x_);
+				//int E20 = -(x - p2.x_) * (p0.y_ - p2.y_) + (y - p2.y_) * (p0.x_ - p2.x_);
 
 
-				// 如果是左上边，用 E >= 0 判断合法，如果右下边就用 E > 0 判断合法
-				// 这里通过引入一个误差 1 ，来将 < 0 和 <= 0 用一个式子表达
-				if (E01 < (tri_context.top_left01_ ? 0 : 1)) continue;   // 在第一条边后面
-				if (E12 < (tri_context.top_left12_ ? 0 : 1)) continue;   // 在第二条边后面
-				if (E20 < (tri_context.top_left20_ ? 0 : 1)) continue;   // 在第三条边后面
-
+				//// 如果是左上边，用 E >= 0 判断合法，如果右下边就用 E > 0 判断合法
+				//// 这里通过引入一个误差 1 ，来将 < 0 和 <= 0 用一个式子表达
+				////if (E01 < (tri_context.top_left01_ ? 0 : 1)) continue;   // 在第一条边后面
+				////if (E12 < (tri_context.top_left12_ ? 0 : 1)) continue;   // 在第二条边后面
+				////if (E20 < (tri_context.top_left20_ ? 0 : 1)) continue;   // 在第三条边后面
+				//if (E01 < 0) continue;   // 在第一条边后面
+				//if (E12 < 0) continue;   // 在第二条边后面
+				//if (E20 < 0) continue;   // 在第三条边后面
 
 				// 三个端点到当前点的矢量
 				TinyMath::Vec2f pixel = { (float)x + 0.5f,(float)y + 0.5f };
-				TinyMath::Vec2f s0 = tri_context.ordered_vs_[0]->center_ - pixel;
-				TinyMath::Vec2f s1 = tri_context.ordered_vs_[1]->center_ - pixel;
-				TinyMath::Vec2f s2 = tri_context.ordered_vs_[2]->center_ - pixel;
+				TinyMath::Vec2f s0 = { tri_context.ordered_vs_[0]->ndc_coords_.x_ - pixel.x_,tri_context.ordered_vs_[0]->ndc_coords_.y_ - pixel.y_ };
+				TinyMath::Vec2f s1 = { tri_context.ordered_vs_[1]->ndc_coords_.x_ - pixel.x_,tri_context.ordered_vs_[1]->ndc_coords_.y_ - pixel.y_ };
+				TinyMath::Vec2f s2 = { tri_context.ordered_vs_[2]->ndc_coords_.x_ - pixel.x_,tri_context.ordered_vs_[2]->ndc_coords_.y_ - pixel.y_ };
 
 				// 重心坐标系：计算内部子三角形面积 a / b / c
-				float a = std::abs(s1.Cross(s2));    // 子三角形 Px-P1-P2 面积
-				float b = std::abs(s2.Cross(s0));    // 子三角形 Px-P2-P0 面积
-				float c = std::abs(s0.Cross(s1));    // 子三角形 Px-P0-P1 面积
-				float s = a + b + c;                 // 大三角形 P0-P1-P2 面积
+				float a = s1.Cross(s2);	   // 子三角形 Px-P1-P2 面积
+				float b = s2.Cross(s0);    // 子三角形 Px-P2-P0 面积
+				float c = s0.Cross(s1);    // 子三角形 Px-P0-P1 面积
+				float s = a + b + c;       // 大三角形 P0-P1-P2 面积
 
-				if (s == 0.0f) continue;
+				if (a<0.0f||b<0.0f||c<0.0f||s == 0.0f) continue;
 
 				// Barycentric coordinates interpolation
 				a /= s;
@@ -311,9 +314,9 @@ private:
 				c /= s;
 
 				//深度以及其倒数在可以直接使用重心插值
-				float z0 = (tri_context.ordered_vs_[0]->pos_.z_ + 1.0f) / 2.0f;
-				float z1 = (tri_context.ordered_vs_[1]->pos_.z_ + 1.0f) / 2.0f;
-				float z2 = (tri_context.ordered_vs_[2]->pos_.z_ + 1.0f) / 2.0f;
+				float z0 = tri_context.ordered_vs_[0]->ndc_coords_.z_;
+				float z1 = tri_context.ordered_vs_[1]->ndc_coords_.z_;
+				float z2 = tri_context.ordered_vs_[2]->ndc_coords_.z_;
 				float depth = a * z0 + b * z1 + c * z2;
 				float rhw = tri_context.ordered_vs_[0]->rhw_ * a + tri_context.ordered_vs_[1]->rhw_ * b + tri_context.ordered_vs_[2]->rhw_ * c;
 
@@ -331,7 +334,7 @@ private:
 
 
 				for (size_t i = 0; i < count; i++) temp[i] = c0 * i0[i] + c1 * i1[i] + c2 * i2[i];
-				TinyMath::Vec4f color = shader.FragmentShader(*(ShaderContext*)temp);
+				TinyMath::Vec4f color = shader.FragmentShader(*(SHADER::ContextType*)temp);
 				m_buffer->get_attachment(0)->set_pixel(x, y, TinyMath::TransformToColor(color));
 			}
 		}

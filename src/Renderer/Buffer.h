@@ -10,6 +10,7 @@ template<typename T>
 class VertexArrayBuffer
 {
 public:
+    using VertexType = T;
     VertexArrayBuffer() = default;
     VertexArrayBuffer(const std::vector<T>& vs, const std::vector<uint32_t>& indices) :m_vertices(vs), m_indices(indices) {}
     VertexArrayBuffer(std::vector<T>&& vs, std::vector<uint32_t>&& indices) :m_vertices(std::move(vs)), m_indices(std::move(indices)) {}

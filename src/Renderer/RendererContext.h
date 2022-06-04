@@ -9,8 +9,8 @@ struct Vertex
 	float* context_;
 	float rhw_;
 	TinyMath::Vec4f pos_;
-	TinyMath::Vec2f center_;		//像素中心 float
-	TinyMath::Vec2i coords_;		//像素坐标
+	TinyMath::Vec3f ndc_coords_; //ndc 坐标
+	TinyMath::Vec2i inter_coords; //整数坐标
 };
 
 
@@ -18,9 +18,9 @@ struct TriangleContext
 {
 	Vertex vs_[3];
 	Vertex* ordered_vs_[3];
-	bool top_left01_;
+	/*bool top_left01_;
 	bool top_left12_;
-	bool top_left20_;
+	bool top_left20_;*/
 	bool tag_ = false;
 	int min_x_, max_x_, min_y_, max_y_;
 

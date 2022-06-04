@@ -12,28 +12,40 @@ void BlinnPhone::Init()
    
     
     Renderer::SetViewPort(Application::Get()->get_width(), Application::Get()->get_height());
-    m_model = std::make_shared<Model<PosColorCoordVertex>>("../assets/nanosuit/nanosuit.obj");
+    m_model = std::make_shared<Model<>>("../assets/cyborg/cyborg.obj");
     m_camera = std::make_shared<Camera>(60.0f, Application::Get()->get_width(), Application::Get()->get_height(), 0.01f, 100.0f);
-    m_camera->set_distance(25.0f);
-    m_camera->set_focal_point(Vec3f(0.0f, 7.0f, 0.0f));
+    const auto& aabb = m_model->GetAABB();
+    auto dig = aabb.mMax - aabb.mMin;
+    float lens = std::max(dig.z, std::max(dig.x, dig.y));
+    TinyMath::Vec3f center(
+        aabb.mMax.x + aabb.mMin.x,
+        aabb.mMax.y + aabb.mMin.y,
+        aabb.mMax.z + aabb.mMin.z);
+    center = center / 2.0f;
+    m_camera->set_distance(lens*1.5f);
+    m_camera->set_focal_point(center);
 
    
     m_blinn_shader.u_mvp = m_camera->get_projection_mat() * m_camera->get_view_mat();
-
+    m_blinn_shader.u_model = Mat4f::GetIdentity();
+    m_blinn_shader.u_light_dir = Normalize(Vec3f(0.0f, 0.0f, -1.0f));
 }
 
 void BlinnPhone::ImguiUpdate()
 {
+    //ImGui::ShowDemoWindow();
     ImGui::Begin("State");
     ImGuiIO& io = ImGui::GetIO();
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
     ImGui::End();
 }
 
-void BlinnPhone::Update(TimeStep ts)
+void BlinnPhone::Update(TimeStep ts, Input::MouseState mouse_state)
 {
-    m_camera->update(ts.get_second(), m_mousestate);
+    m_camera->update(ts.get_second(), mouse_state);
+    
     m_blinn_shader.u_mvp = m_camera->get_projection_mat() * m_camera->get_view_mat();
+    m_blinn_shader.u_view_pos = m_camera->get_position();
     uint32_t width = Application::Get()->get_width();
     uint32_t height = Application::Get()->get_height();
     
@@ -48,19 +60,6 @@ void BlinnPhone::Update(TimeStep ts)
 
 void BlinnPhone::OnEvent(const Event* e)
 {
-    EventDispatcher dispatcher(e);
-    dispatcher.dispatch<MouseMoveEvent>(std::bind(&BlinnPhone::OnMouseMove, this, std::placeholders::_1));
-    dispatcher.dispatch<MouseScrollEvent>(std::bind(&BlinnPhone::OnMouseScroll, this, std::placeholders::_1));
-}
-
-void BlinnPhone::OnMouseMove(const MouseMoveEvent* e)
-{
-    m_mousestate.x_ = e->x_;
-    m_mousestate.y_ = e->y_;
     
 }
 
-void BlinnPhone::OnMouseScroll(const MouseScrollEvent* e)
-{
-    m_mousestate.z_ +=e->z_;
-}

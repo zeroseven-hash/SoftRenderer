@@ -7,6 +7,8 @@
 #include<glad/glad.h>
 #include <GLFW/glfw3.h> 
 #include<imgui.h>
+#include<imgui_internal.h>
+
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 #include"Renderer/Renderer.h"
@@ -66,16 +68,18 @@ void Application::Init()
     //init scene
  
     Renderer::Init(m_width, m_height);
-    if(m_scene) m_scene->Init();
-    
+    for (auto& scene : m_scenes) scene->Init();
     
 }
 void Application::Run()
 {
     auto window = glfwGetCurrentContext();
+    if (!m_scenes.empty()) m_selected_scene = m_scenes[0];
+
     // Main loop
     while (!glfwWindowShouldClose(window))
     {
+
         // Poll and handle events (inputs, window resize, etc.)
         // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
         // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application.
@@ -88,15 +92,15 @@ void Application::Run()
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-
-        if(m_scene) m_scene->ImguiUpdate();
+        ImguiUpdate();
+        if(m_selected_scene) m_selected_scene->ImguiUpdate();
         
         
         // Rendering
         float cur_time = (float)glfwGetTime();
         TimeStep ts(cur_time - m_last_time);
         m_last_time = cur_time;
-        if(m_scene) m_scene->Update(ts);
+        if(m_selected_scene) m_selected_scene->Update(ts,m_mousestate);
         
 
         ImGui::Render();
@@ -120,11 +124,31 @@ void Application::Run()
 
 
 
+void Application::ImguiUpdate()
+{
+    if (ImGui::BeginMainMenuBar())
+    {
+        if (ImGui::BeginMenu("Example"))
+        {
+            for (auto& scene : m_scenes)
+            {
+                bool is_select = (m_selected_scene == scene) ? true : false;
+                ImGui::Selectable(scene->get_name().c_str(), is_select, ImGuiSelectableFlags_SpanAvailWidth);
+
+                if (ImGui::IsItemClicked()) m_selected_scene = scene;
+            }
+            ImGui::EndMenu();
+        }
+       
+        ImGui::EndMainMenuBar();
+    }
+}
+
 void Application::Destory()
 {
     // Cleanup
     Renderer::Destory();
-    m_scene->Destory();
+    for (auto& scene : m_scenes) scene->Destory();
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
@@ -135,7 +159,21 @@ void Application::Destory()
 
 void Application::OnEvent(const Event* e)
 {
-    m_scene->OnEvent(e);
+    EventDispatcher dispatcher(e);
+    dispatcher.dispatch<MouseMoveEvent>(std::bind(&Application::OnMouseMove, this, std::placeholders::_1));
+    dispatcher.dispatch<MouseScrollEvent>(std::bind(&Application::OnMouseScroll, this, std::placeholders::_1));
+    for (auto scene : m_scenes) scene->OnEvent(e);
+}
+
+void Application::OnMouseMove(const MouseMoveEvent* e)
+{
+    m_mousestate.x_ = e->x_;
+    m_mousestate.y_ = e->y_;
+}
+
+void Application::OnMouseScroll(const MouseScrollEvent* e)
+{
+    m_mousestate.z_ += e->z_;
 }
 
 Application* Application::CreateApp(const char* name, uint32_t width, uint32_t height)

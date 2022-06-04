@@ -90,7 +90,8 @@ namespace TinyMath
 		};
 		inline Vector() :x_(T()), y_(T()), z_(T()), w_(T()) {}
 		inline Vector(T x, T y, T z, T w) : x_(x), y_(y), z_(z), w_(w) {}
-		inline Vector(const Vector<3, T>& v, T w) : x_(v.x_), y_(v.y_), z_(v.z_), w_(w) {}
+		
+		inline Vector(const Vector<3, T>& v, T w=1.0f) : x_(v.x_), y_(v.y_), z_(v.z_), w_(w) {}
 		inline Vector(const Vector<4, T>& v) : x_(v.x_), y_(v.y_), z_(v.z_), w_(v.w_) {}
 		inline Vector(const T* ptr) : x_(ptr[0]), y_(ptr[1]), z_(ptr[2]), w_(ptr[3]) {}
 
@@ -105,7 +106,7 @@ namespace TinyMath
 
 		
 		inline operator Vector<2, T>()const { return Vector<2, T>(x_, y_); }
-		inline operator Vector<3, T>()const { return Vector<3, T>(x_, y_, w_); }
+		inline operator Vector<3, T>()const { return Vector<3, T>(x_, y_, z_); }
 	};
 
 
@@ -316,7 +317,18 @@ namespace TinyMath
 		return res;
 	}
 
-	
+	template<size_t N,typename T>
+	inline Vector<N, T> Pow(const Vector<N,T>& v,float pow)
+	{
+		Vector<N, T> res;
+		for (int i = 0; i < N; i++)
+		{
+			res.m_[i] = std::pow(v.m_[i], pow);
+		}
+		return res;
+	}
+
+
 	// 判断一条边是不是三角形的左上边 (Top-Left Edge)
 	inline bool IsTopLeft(const Vec2i& a, const Vec2i& b)
 	{
@@ -809,5 +821,11 @@ namespace TinyMath
 		};
 	}
 
+
+
+
+
+
+	
 }
 typedef TinyMath::Vec4u8i Color;

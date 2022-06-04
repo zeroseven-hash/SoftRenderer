@@ -5,17 +5,29 @@
 #include<iostream>
 
 #include<assimp/Importer.hpp>
+#include<assimp/Exporter.hpp>
 #include<assimp/scene.h>
 #include<assimp/postprocess.h>
+
 
 
 struct TextureCompnent
 {
     uint32_t id_;
     shared_ptr<Texture2D> texture_;
-    std::string type_;
+    aiTextureType type_;
     std::string path_;
 };
+
+struct ModelVertex
+{
+    TinyMath::Vec4f pos_;
+    TinyMath::Vec3f normal_;
+    TinyMath::Vec2f coords_;
+    TinyMath::Vec3f tangent_;
+    TinyMath::Vec3f bitangent_;
+};
+
 template<typename V>
 class Mesh
 {
@@ -35,13 +47,18 @@ public:
     }
 public:
 
+    const aiAABB& GetAABB()const  { return m_AABB; }
+    void SetAABB(const aiAABB& aabb) { m_AABB = aabb; }
     template<typename SHADER>
     void Draw(SHADER& shader)
     {
         for (uint32_t i = 0; i < m_textures.size(); i++)
         {
-            std::string& name = m_textures[i].type_;
-            if (name == "texture_diffuse") shader.SetTexture("u_diffuse", 0, m_textures[i].texture_.get());
+            auto type = m_textures[i].type_;
+            if (type == aiTextureType_DIFFUSE)  shader.SetTexture(0, m_textures[i].texture_.get());
+            if (type == aiTextureType_SPECULAR) shader.SetTexture(1, m_textures[i].texture_.get());
+            if (type == aiTextureType_AMBIENT)  shader.SetTexture(2, m_textures[i].texture_.get());
+            if (type == aiTextureType_HEIGHT)   shader.SetTexture(3, m_textures[i].texture_.get());
            // m_textures[i].SaveFileBMP("texture.bmp");
         }
         Renderer::Submit(m_vao, shader);
@@ -49,12 +66,13 @@ public:
 private:
     VertexArrayBuffer<V> m_vao;
     std::vector<TextureCompnent> m_textures;
+    aiAABB m_AABB;
 };
 
 struct aiNode;
 struct aiScene;
 struct aiMesh;
-template<typename V>
+template<typename V=ModelVertex>
 class Model
 {
 public:
@@ -67,17 +85,19 @@ public:
 public:
     void LoadModel(const char* path);
 
+    const aiAABB& GetAABB()const { return m_AABB; }
     template<typename SHADER>
     void Draw(SHADER& shader)
     {
         for (size_t i = 0; i < m_meshes.size(); i++) m_meshes[i].Draw(shader);
     }
-private:
+protected:
     void ProcessNode(aiNode* node, const aiScene* scene);
-    Mesh<V> ProcessMesh(aiMesh* mesh, const aiScene* scene);
-    std::vector<TextureCompnent> LoadMaterialTextures(aiMaterial* mat, aiTextureType type, const std::string& type_name);
-private:
+    virtual Mesh<V> ProcessMesh(aiMesh* mesh, const aiScene* scene);
+    std::vector<TextureCompnent> LoadMaterialTextures(aiMaterial* mat, aiTextureType type);
+protected:
     std::vector<Mesh<V>> m_meshes;
+    aiAABB m_AABB;
     std::string m_dir;
 };
 
@@ -86,7 +106,8 @@ template<typename V>
 void Model<V>::LoadModel(const char* path)
 {
     Assimp::Importer import;
-    const aiScene* scene = import.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs);
+    const aiScene* scene = import.ReadFile(path, aiProcess_Triangulate  |aiProcess_FlipUVs |aiProcess_CalcTangentSpace|aiProcess_GenBoundingBoxes);
+    int a=scene->mNumAnimations;
 
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
     {
@@ -96,6 +117,18 @@ void Model<V>::LoadModel(const char* path)
     std::string s_path(path);
     m_dir = s_path.substr(0, s_path.find_last_of('/'));
     ProcessNode(scene->mRootNode, scene);
+    m_AABB = m_meshes[0].GetAABB();
+    for (auto& mesh : m_meshes)
+    {
+        const auto& AABB = mesh.GetAABB();
+        m_AABB.mMax.x = std::max(AABB.mMax.x, m_AABB.mMax.x);
+        m_AABB.mMax.y = std::max(AABB.mMax.y, m_AABB.mMax.y);
+        m_AABB.mMax.z = std::max(AABB.mMax.z, m_AABB.mMax.z);
+
+        m_AABB.mMin.x = std::min(AABB.mMin.x, m_AABB.mMin.x);
+        m_AABB.mMin.y = std::min(AABB.mMin.y, m_AABB.mMin.y);
+        m_AABB.mMin.z = std::min(AABB.mMin.z, m_AABB.mMin.z);
+    }
 }
 
 
@@ -107,7 +140,7 @@ void Model<V>::ProcessNode(aiNode* node, const aiScene* scene)
         aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
         m_meshes.push_back(ProcessMesh(mesh, scene));
     }
-
+    
     for (unsigned int i = 0; i < node->mNumChildren; i++)
     {
         ProcessNode(node->mChildren[i], scene);
@@ -119,11 +152,13 @@ Mesh<V> Model<V>::ProcessMesh(aiMesh* mesh, const aiScene* scene)
     std::vector<V> vertices;
     std::vector<uint32_t> indices;
     std::vector<TextureCompnent> textures;
+
+    
     for (size_t i = 0; i < mesh->mNumVertices; i++)
     {
         V vertex;
         vertex.pos_ = TinyMath::Vec4f(mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z, 1.0f);
-
+        
         if (mesh->mTextureCoords[0])
         {
             vertex.coords_.x_ = mesh->mTextureCoords[0][i].x;
@@ -131,6 +166,25 @@ Mesh<V> Model<V>::ProcessMesh(aiMesh* mesh, const aiScene* scene)
         }
         else
             vertex.coords_ = TinyMath::Vec2f(0.0f, 0.0f);
+
+        if (mesh->HasNormals())
+        {
+            vertex.normal_.x_ = mesh->mNormals[i].x;
+            vertex.normal_.y_ = mesh->mNormals[i].y;
+            vertex.normal_.z_ = mesh->mNormals[i].z;
+        }
+
+        if (mesh->HasTangentsAndBitangents())
+        {
+            vertex.bitangent_.x_ = mesh->mBitangents[i].x;
+            vertex.bitangent_.y_ = mesh->mBitangents[i].y;
+            vertex.bitangent_.z_ = mesh->mBitangents[i].z;
+
+
+            vertex.tangent_.x_ = mesh->mTangents[i].x;
+            vertex.tangent_.y_ = mesh->mTangents[i].y;
+            vertex.tangent_.z_ = mesh->mTangents[i].z;
+        }
         vertices.push_back(vertex);
     }
 
@@ -141,19 +195,21 @@ Mesh<V> Model<V>::ProcessMesh(aiMesh* mesh, const aiScene* scene)
     }
 
     aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
-    std::vector<TextureCompnent> diffuse_maps = LoadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
-    textures.insert(textures.end(), diffuse_maps.begin(), diffuse_maps.end());
-    // std::vector<Texture> specular_maps = LoadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
-    // textures.insert(textures.end(), specular_maps.begin(), specular_maps.end());
-    // std::vector<Texture> normal_maps = LoadMaterialTextures(material, aiTextureType_HEIGHT, "texture_normal");
-    // textures.insert(textures.end(), normal_maps.begin(), normal_maps.end());
-    // std::vector<Texture> height_maps = LoadMaterialTextures(material, aiTextureType_AMBIENT, "texture_height");
-    // textures.insert(textures.end(), height_maps.begin(), height_maps.end());
+    std::vector<TextureCompnent> kd_maps = LoadMaterialTextures(material, aiTextureType_DIFFUSE);
+    textures.insert(textures.end(), kd_maps.begin(), kd_maps.end());
+    std::vector<TextureCompnent> ks_maps = LoadMaterialTextures(material, aiTextureType_SPECULAR);
+    textures.insert(textures.end(), ks_maps.begin(), ks_maps.end());
+    std::vector<TextureCompnent> bump_maps = LoadMaterialTextures(material, aiTextureType_HEIGHT);
+    textures.insert(textures.end(), bump_maps.begin(), bump_maps.end());
+    std::vector<TextureCompnent> ka_maps = LoadMaterialTextures(material, aiTextureType_AMBIENT);
+    textures.insert(textures.end(), ka_maps.begin(), ka_maps.end());
 
-    return Mesh<V>(std::move(vertices), std::move(indices), std::move(textures));
+    auto m= Mesh<V>(std::move(vertices), std::move(indices), std::move(textures));
+    m.SetAABB(mesh->mAABB);
+    return m;
 }
 template<typename V>
-std::vector<TextureCompnent> Model<V>::LoadMaterialTextures(aiMaterial* mat, aiTextureType type, const std::string& type_name)
+std::vector<TextureCompnent> Model<V>::LoadMaterialTextures(aiMaterial* mat, aiTextureType type)
 {
     static int texturescount = 0;
     std::vector<TextureCompnent> textures;
@@ -162,12 +218,22 @@ std::vector<TextureCompnent> Model<V>::LoadMaterialTextures(aiMaterial* mat, aiT
         aiString str;
         mat->GetTexture(type, i, &str);
         TextureCompnent texture;
+        
         std::string filename = std::string(str.C_Str());
         filename = m_dir + '/' + filename;
         texture.texture_ = std::make_shared<Texture2D>(TextureLayout::LINEAR);
         texture.texture_->LoadFile(filename.c_str(),SAMPLER_NEARST|SAMPLER_REPEAT);
         texture.id_ = texturescount++;
-        texture.type_ = type_name;
+        texture.type_ = type;
+        textures.push_back(texture);
+    }
+    if (textures.empty())
+    {
+        TextureCompnent texture;
+        texture.texture_ = Texture2D::Create(4, 4, TextureLayout::LINEAR, 0, SAMPLER_NEARST | SAMPLER_REPEAT);
+        texture.texture_->Fill(Color(0x00, 0x00, 0x00, 0xff));
+        texture.id_ = texturescount++;
+        texture.type_ = type;
         textures.push_back(texture);
     }
     return textures;
