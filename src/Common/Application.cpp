@@ -66,7 +66,8 @@ void Application::Init()
 
     Input::Init(window, std::bind(&Application::OnEvent, this, std::placeholders::_1));
     //init scene
- 
+    
+    m_camera = std::make_shared<Camera>(90.0f, m_width, m_height, 0.001f, 3000.0f);
     Renderer::Init(m_width, m_height);
     for (auto& scene : m_scenes) scene->Init();
     
@@ -74,7 +75,12 @@ void Application::Init()
 void Application::Run()
 {
     auto window = glfwGetCurrentContext();
-    if (!m_scenes.empty()) m_selected_scene = m_scenes[0];
+    if (!m_scenes.empty())
+    {
+        m_selected_scene = m_scenes[0];
+        m_camera->set_distance(m_selected_scene->get_dist());
+        m_camera->set_focal_point(m_selected_scene->get_center());
+    }
 
     // Main loop
     while (!glfwWindowShouldClose(window))
@@ -100,6 +106,7 @@ void Application::Run()
         float cur_time = (float)glfwGetTime();
         TimeStep ts(cur_time - m_last_time);
         m_last_time = cur_time;
+        m_camera->update(ts.get_second(), m_mousestate);
         if(m_selected_scene) m_selected_scene->Update(ts,m_mousestate);
         
 
@@ -135,7 +142,12 @@ void Application::ImguiUpdate()
                 bool is_select = (m_selected_scene == scene) ? true : false;
                 ImGui::Selectable(scene->get_name().c_str(), is_select, ImGuiSelectableFlags_SpanAvailWidth);
 
-                if (ImGui::IsItemClicked()) m_selected_scene = scene;
+                if (ImGui::IsItemClicked())
+                {
+                    m_selected_scene = scene;
+                    m_camera->set_distance(m_selected_scene->get_dist());
+                    m_camera->set_focal_point(m_selected_scene->get_center());
+                }
             }
             ImGui::EndMenu();
         }

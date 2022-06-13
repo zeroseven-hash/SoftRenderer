@@ -13,7 +13,6 @@ void BlinnPhone::Init()
     
     Renderer::SetViewPort(Application::Get()->get_width(), Application::Get()->get_height());
     m_model = std::make_shared<Model<>>("../assets/cyborg/cyborg.obj");
-    m_camera = std::make_shared<Camera>(60.0f, Application::Get()->get_width(), Application::Get()->get_height(), 0.01f, 100.0f);
     const auto& aabb = m_model->GetAABB();
     auto dig = aabb.mMax - aabb.mMin;
     float lens = std::max(dig.z, std::max(dig.x, dig.y));
@@ -22,11 +21,12 @@ void BlinnPhone::Init()
         aabb.mMax.y + aabb.mMin.y,
         aabb.mMax.z + aabb.mMin.z);
     center = center / 2.0f;
-    m_camera->set_distance(lens*1.5f);
-    m_camera->set_focal_point(center);
+    m_focus_dist = lens * 1.5f;
+    m_center = center;
 
+    auto camera = Application::Get()->get_camera();
    
-    m_blinn_shader.u_mvp = m_camera->get_projection_mat() * m_camera->get_view_mat();
+    m_blinn_shader.u_mvp = camera->get_projection_mat() * camera->get_view_mat();
     m_blinn_shader.u_model = Mat4f::GetIdentity();
     m_blinn_shader.u_light_dir = Normalize(Vec3f(0.0f, 0.0f, -1.0f));
 }
@@ -42,10 +42,10 @@ void BlinnPhone::ImguiUpdate()
 
 void BlinnPhone::Update(TimeStep ts, Input::MouseState mouse_state)
 {
-    m_camera->update(ts.get_second(), mouse_state);
+    auto camera = Application::Get()->get_camera();
     
-    m_blinn_shader.u_mvp = m_camera->get_projection_mat() * m_camera->get_view_mat();
-    m_blinn_shader.u_view_pos = m_camera->get_position();
+    m_blinn_shader.u_mvp = camera->get_projection_mat() * camera->get_view_mat();
+    m_blinn_shader.u_view_pos = camera->get_position();
     uint32_t width = Application::Get()->get_width();
     uint32_t height = Application::Get()->get_height();
     

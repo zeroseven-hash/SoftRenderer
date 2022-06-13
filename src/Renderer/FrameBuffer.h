@@ -9,7 +9,6 @@ struct TextureSpec
 {
 
 	TextureLayout layout_=TextureLayout::LINEAR;	
-	int layer_=0;
 	TextureFlag_ flag_=0;
 };
 struct TextureSpecList
@@ -31,7 +30,7 @@ public:
 		for (int i = 0; i < specs.m_specs.size(); i++)
 		{
 			auto& spec = specs.m_specs[i];
-			Texture2D* tex = new Texture2D(width, height, spec.layout_, spec.layer_, spec.flag_);
+			Texture2D* tex = new Texture2D(width, height, spec.layout_, spec.flag_);
 			m_tex_attachments.emplace_back(tex);
 		}
 

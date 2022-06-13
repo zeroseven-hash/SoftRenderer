@@ -53,22 +53,22 @@ void Camera::KeyMove()
 
 	if (Input::IsKeyPress(Input::Key::A))
 	{
-		m_delta_move[0] += m_time_step * 5.0f;
+		m_delta_move[0] += m_time_step * 1.5f;
 	}
 
 	if (Input::IsKeyPress(Input::Key::D))
 	{
-		m_delta_move[0] -= m_time_step * 5.0f;
+		m_delta_move[0] -= m_time_step * 1.5f;
 	}
 	if (Input::IsKeyPress(Input::Key::W))
 	{
 
-		m_delta_move[1] += m_time_step * 5.0f;
+		m_delta_move[1] += m_time_step * 1.5f;
 	}
 	if (Input::IsKeyPress(Input::Key::S))
 	{
 
-		m_delta_move[1] -= m_time_step * 5.0f;
+		m_delta_move[1] -= m_time_step * 1.5f;
 	}
 }
 

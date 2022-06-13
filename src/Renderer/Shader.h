@@ -13,6 +13,8 @@ struct ShaderContextDefault
 };
 
 
+
+
 typedef int Sampler;
 using FragmentShader = std::function<TinyMath::Vec4f(void* input)>;
 class Canvas;
@@ -28,7 +30,7 @@ public:
     TinyMath::Vec4f VertexShader(const VAO& vao, int index, Context& context)const{}
 
     //fragmentshader
-    TinyMath::Vec4f FragmentShader(const Context& input)const{}
+    TinyMath::Vec4f FragmentShader(const Context* input)const{}
 
     void SetTexture(int index, Texture2D* tex) { 
         assert(index < 32);
@@ -42,3 +44,8 @@ protected:
     //TODO: geometry shader;
 };
 
+//some shader function
+TinyMath::Vec4f ToLinear(const TinyMath::Vec4f& color);
+TinyMath::Vec4f ToGammar(const TinyMath::Vec4f& color);
+TinyMath::Vec3f ToGammar(const TinyMath::Vec3f& color);
+TinyMath::Vec3f Exposure(const TinyMath::Vec3f& color,float exposure);

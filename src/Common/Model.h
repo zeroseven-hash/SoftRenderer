@@ -59,6 +59,10 @@ public:
             if (type == aiTextureType_SPECULAR) shader.SetTexture(1, m_textures[i].texture_.get());
             if (type == aiTextureType_AMBIENT)  shader.SetTexture(2, m_textures[i].texture_.get());
             if (type == aiTextureType_HEIGHT)   shader.SetTexture(3, m_textures[i].texture_.get());
+            if(type  == aiTextureType_EMISSIVE)    shader.SetTexture(4, m_textures[i].texture_.get());
+
+            if(type==aiTextureType_NORMALS) shader.SetTexture(5, m_textures[i].texture_.get());
+            if (type == aiTextureType_METALNESS) shader.SetTexture(6, m_textures[i].texture_.get());
            // m_textures[i].SaveFileBMP("texture.bmp");
         }
         Renderer::Submit(m_vao, shader);
@@ -83,7 +87,7 @@ public:
     }
 
 public:
-    void LoadModel(const char* path);
+    virtual void LoadModel(const char* path);
 
     const aiAABB& GetAABB()const { return m_AABB; }
     template<typename SHADER>
@@ -92,6 +96,7 @@ public:
         for (size_t i = 0; i < m_meshes.size(); i++) m_meshes[i].Draw(shader);
     }
 protected:
+    void LoadMesh(const aiScene* scene);
     void ProcessNode(aiNode* node, const aiScene* scene);
     virtual Mesh<V> ProcessMesh(aiMesh* mesh, const aiScene* scene);
     std::vector<TextureCompnent> LoadMaterialTextures(aiMaterial* mat, aiTextureType type);
@@ -106,8 +111,7 @@ template<typename V>
 void Model<V>::LoadModel(const char* path)
 {
     Assimp::Importer import;
-    const aiScene* scene = import.ReadFile(path, aiProcess_Triangulate  |aiProcess_FlipUVs |aiProcess_CalcTangentSpace|aiProcess_GenBoundingBoxes);
-    int a=scene->mNumAnimations;
+    const aiScene* scene = import.ReadFile(path, aiProcess_Triangulate  |aiProcess_FlipUVs |aiProcess_CalcTangentSpace|aiProcess_GenBoundingBoxes|aiProcess_LimitBoneWeights);
 
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
     {
@@ -116,6 +120,13 @@ void Model<V>::LoadModel(const char* path)
     }
     std::string s_path(path);
     m_dir = s_path.substr(0, s_path.find_last_of('/'));
+    LoadMesh(scene);
+}
+
+
+template<typename V>
+inline void Model<V>::LoadMesh(const aiScene* scene)
+{
     ProcessNode(scene->mRootNode, scene);
     m_AABB = m_meshes[0].GetAABB();
     for (auto& mesh : m_meshes)
@@ -130,7 +141,6 @@ void Model<V>::LoadModel(const char* path)
         m_AABB.mMin.z = std::min(AABB.mMin.z, m_AABB.mMin.z);
     }
 }
-
 
 template<typename V>
 void Model<V>::ProcessNode(aiNode* node, const aiScene* scene)
@@ -218,20 +228,13 @@ std::vector<TextureCompnent> Model<V>::LoadMaterialTextures(aiMaterial* mat, aiT
         aiString str;
         mat->GetTexture(type, i, &str);
         TextureCompnent texture;
-        
+
         std::string filename = std::string(str.C_Str());
         filename = m_dir + '/' + filename;
         texture.texture_ = std::make_shared<Texture2D>(TextureLayout::LINEAR);
-        texture.texture_->LoadFile(filename.c_str(),SAMPLER_NEARST|SAMPLER_REPEAT);
-        texture.id_ = texturescount++;
-        texture.type_ = type;
-        textures.push_back(texture);
-    }
-    if (textures.empty())
-    {
-        TextureCompnent texture;
-        texture.texture_ = Texture2D::Create(4, 4, TextureLayout::LINEAR, 0, SAMPLER_NEARST | SAMPLER_REPEAT);
-        texture.texture_->Fill(Color(0x00, 0x00, 0x00, 0xff));
+        texture.texture_->LoadFile(filename.c_str(), SAMPLER_NEARST | SAMPLER_REPEAT);
+
+        texture.texture_->GenerateMipmap();
         texture.id_ = texturescount++;
         texture.type_ = type;
         textures.push_back(texture);

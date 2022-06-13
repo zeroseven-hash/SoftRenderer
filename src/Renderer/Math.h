@@ -317,6 +317,13 @@ namespace TinyMath
 		return res;
 	}
 
+	template<size_t N, typename T>
+	inline  Vector<N, T> Mix(const Vector<N, T>& v1, const Vector<N, T>& v2, float a)
+	{
+		return (1 - a) * v1 + a * v2;
+	}
+
+
 	template<size_t N,typename T>
 	inline Vector<N, T> Pow(const Vector<N,T>& v,float pow)
 	{
@@ -327,7 +334,16 @@ namespace TinyMath
 		}
 		return res;
 	}
-
+	template<size_t N, typename T>
+	inline Vector<N, T> Exp(const Vector<N, T>& v)
+	{
+		Vector<N, T> res;
+		for (int i = 0; i < N; i++)
+		{
+			res.m_[i] = std::exp(v.m_[i]);
+		}
+		return res;
+	}
 
 	// 判断一条边是不是三角形的左上边 (Top-Left Edge)
 	inline bool IsTopLeft(const Vec2i& a, const Vec2i& b)
@@ -584,9 +600,9 @@ namespace TinyMath
 	inline Matrix<4, 4, T> Tranlate(const Matrix<4, 4, T>& m, const Vector<3, T>& v)
 	{
 		Matrix<4, 4, T> res(m);
-		res[0][3] = res[0][3] + v[0];
-		res[1][3] = res[1][3] + v[1];
-		res[2][3] = res[2][3] + v[2];
+		res[0][3] = res[0][0] * v[0] + res[0][1] * v[1] + res[0][2] * v[2] + res[0][3];
+		res[1][3] = res[1][0] * v[0] + res[1][1] * v[1] + res[1][2] * v[2] + res[1][3];
+		res[2][3] = res[2][0] * v[0] + res[2][1] * v[1] + res[2][2] * v[2] + res[2][3];
 		return res;
 	}
 
@@ -594,7 +610,7 @@ namespace TinyMath
 	inline Matrix<4, 4, T> Scale(const Matrix<4, 4, T>& m, const Vector<3, T>& v)
 	{
 		Matrix<4, 4, T> res(m);
-		for (int i = 0;i < 3;i++)
+		for (int i = 0;i < 4;i++)
 		{
 			res[0][i] *= v[0];
 			res[1][i] *= v[1];

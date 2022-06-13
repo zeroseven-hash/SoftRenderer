@@ -26,9 +26,17 @@ public:
 
 public:
     void set_distance(float distance) {
-        m_distance = distance;  updatePostion(); updateView();
+        float delta = m_distance-distance;
+        delta /= scrollSpeed();
+        m_delta_dist += delta;
+        mouseRightAndScroll(0.05f);
+        updateView();
+        //m_distance = distance;  updatePostion(); updateView();
     }
-    void set_focal_point(const Vec3f& fp) { m_focal_point = fp; updatePostion(); updateView(); }
+    void set_focal_point(const Vec3f& fp) 
+    {
+        m_focal_point= fp; updatePostion(); updateView(); 
+    }
     void set_fov(float fov) { m_fov = fov, updateProject(); }
     void set_width_and_height(uint32_t width, uint32_t height) { m_width = width; m_height = height; updateProject(); updateSpeed(); }
 

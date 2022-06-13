@@ -14,6 +14,10 @@ public:
     virtual void OnEvent(const Event* e){}
     virtual void Destory(){}
     const std::string& get_name()const { return m_name; }
-private:
+    float get_dist()const { return m_focus_dist; }
+    const TinyMath::Vec3f& get_center()const { return m_center; }
+protected:
     std::string m_name;
+    float m_focus_dist = 1.0f;
+    TinyMath::Vec3f m_center = { 0.0f,0.0f,0.0f };
 };

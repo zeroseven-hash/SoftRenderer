@@ -3,6 +3,7 @@
 #include<memory>
 #include<map>
 #include<cstring>
+#include<iostream>
 
 
 #include"Math.h"
@@ -48,7 +49,7 @@ public:
 	static void UnBind();
 	static void SetViewPort(uint32_t width, uint32_t height);
 	static void LineColor(const Color& color) { Renderer::GetRenderContext().color_fg_ = color; }
-	static void SetState(RenderFlag_ flag) { Renderer::GetRenderContext().renderer_flag = flag; }
+	static void SetState(BufferFlag flag) { Renderer::GetRenderContext().renderer_flag = flag; }
 	static void FlushFrame();
 	static void FlushFrame(FrameBuffer* fb, int attachment);
 	static void Destory(){}
@@ -260,9 +261,9 @@ private:
 	static void DrawPixel(const VAO& vao, SHADER& shader,TriangleContext& tri_context)
 	{
 		constexpr int count = sizeof(SHADER::ContextType) / sizeof(float);
-		static SHADER::ContextType input;
-		float* temp = (float*)&input;
-
+		static SHADER::ContextType input[2];	
+		float* temp = (float*)&input[0];
+		float* delta = (float*)&input[1];
 
 		int min_x = tri_context.min_x_;
 		int max_x = tri_context.max_x_;
@@ -272,10 +273,21 @@ private:
 		float* i0 = tri_context.ordered_vs_[0]->context_;
 		float* i1 = tri_context.ordered_vs_[1]->context_;
 		float* i2 = tri_context.ordered_vs_[2]->context_;
+
+		
+		//for ddx and ddy,is a hack;
+		static SHADER::ContextType last;
+		float* last_t = (float*)&last;
+
+
+		
 		for (int y = min_y; y <= max_y; y++)
 		{
+			bool first = true;
+			
 			for (int x = min_x; x <= max_x; x++)
 			{
+				
 				//auto& p0 = tri_context.ordered_vs_[0]->inter_coords;
 				//auto& p1 = tri_context.ordered_vs_[1]->inter_coords;
 				//auto& p2 = tri_context.ordered_vs_[2]->inter_coords;
@@ -332,11 +344,30 @@ private:
 				float c2 = tri_context.ordered_vs_[2]->rhw_ * c * w;
 
 
+				for (int i = 0; i < count; i++) temp[i] = c0 * i0[i] + c1 * i1[i] + c2 * i2[i];
 
-				for (size_t i = 0; i < count; i++) temp[i] = c0 * i0[i] + c1 * i1[i] + c2 * i2[i];
-				TinyMath::Vec4f color = shader.FragmentShader(*(SHADER::ContextType*)temp);
+				if (!first)
+				{
+					for (int i = 0; i < count; i++)
+					{
+						delta[i] = temp[i] - last_t[i];
+						last_t[i] = temp[i];
+					}
+				}
+				else
+				{
+					for (int i = 0; i < count; i++)
+					{
+						delta[i] = 0.0f;
+						first = false;
+					}
+
+				}
+				TinyMath::Vec4f color = shader.FragmentShader(input);
 				m_buffer->get_attachment(0)->set_pixel(x, y, TinyMath::TransformToColor(color));
 			}
+			
+			
 		}
 	}
 

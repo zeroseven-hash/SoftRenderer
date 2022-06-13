@@ -26,7 +26,6 @@ public:
 private:
 
 
-    shared_ptr<Camera> m_camera;
     shared_ptr<Model<>> m_model;
     BlinnShader<> m_blinn_shader;
 };

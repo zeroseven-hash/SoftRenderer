@@ -1,6 +1,7 @@
 #pragma once
 #include"Common/Event.h"
 
+#include"Renderer/Camera.h"
 #include <stdint.h>
 #include<string>
 #include<memory>
@@ -47,7 +48,7 @@ public:
 
     uint32_t get_width()const { return m_width; }
     uint32_t get_height()const { return m_height; }
-
+    shared_ptr<Camera> get_camera() { return m_camera; }
 
 
     void OnMouseMove(const MouseMoveEvent* e);
@@ -62,6 +63,7 @@ private:
     uint32_t m_width;
     uint32_t m_height;
     float m_last_time;
+    shared_ptr<Camera> m_camera;
     shared_ptr<Scene> m_selected_scene;
     std::vector<shared_ptr<Scene>> m_scenes;
     static Application* s_instance;

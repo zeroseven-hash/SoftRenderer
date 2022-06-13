@@ -3,6 +3,7 @@
 #include"Math.h"
 
 #include<stdint.h>
+#include<vector>
 #include<memory>
 #include <emmintrin.h>
 
@@ -49,6 +50,7 @@ protected:
 	ClipMode m_mode = ClipMode::REPEAT;
 	TextureLayout m_layout;
 
+	
 	//onlyt for TextureLayout::Tiled
 	const int s_tile_w = 4;
 	const int s_tile_h = 4;
@@ -62,20 +64,17 @@ class Texture2D:public Texture
 public:
 
 	Texture2D(TextureLayout layout=TextureLayout::LINEAR):Texture(layout){}
-	Texture2D(uint32_t width, uint32_t height,TextureLayout layout=TextureLayout::LINEAR, int layer = 0, TextureFlag_ texture_flag_ = 0);
-	Texture2D(const Texture2D& texture)
-		:m_width(texture.m_width), m_height(texture.m_height), m_channel(texture.m_channel), m_pitch(texture.m_pitch)
-	{
-		m_filter = texture.m_filter;
-		m_mode = texture.m_mode;
-		m_layout = texture.m_layout;
-		m_width_in_tiles = texture.m_width_in_tiles;
-		m_tiles_pitch = texture.m_tiles_pitch;
-		m_bits = new uint8_t[m_pitch * m_height];
-		memcpy(m_bits, texture.m_bits, m_pitch * m_height);
-	}
+	Texture2D(uint32_t width, uint32_t height,TextureLayout layout=TextureLayout::LINEAR,TextureFlag_ texture_flag_ = 0, uint32_t channel=4);
+	Texture2D(const Texture2D& texture) = delete;
 
-	~Texture2D() = default;
+	~Texture2D() 
+	{
+		for (uint32_t i = 1; i < m_mipmaps.size(); i++)
+		{
+			if (m_mipmaps[i]) delete m_mipmaps[i];
+			m_mipmaps[i] = nullptr;
+		} 
+	};
 	void Resize(uint32_t width, uint32_t height)
 	{
 		m_width = width;
@@ -103,7 +102,10 @@ public:
 	void LoadFile(const char* filename,TextureFlag_ texture_flag_=0);
 	void SaveBMPFile(const char* filename);
 
+	void GenerateMipmap();
 	TinyMath::Vec4f Sampler2D(const TinyMath::Vec2f& uv)const;
+	TinyMath::Vec4f Texture2D::Sampler2DLod(const TinyMath::Vec2f& uv,float lod)const;
+
 
 	/*
 	* width:width
@@ -111,9 +113,9 @@ public:
 	* layer:mipmap layer
 	* flag:sampler flag
 	*/
-	static std::shared_ptr<Texture2D> Create(uint32_t width,uint32_t height, TextureLayout layout = TextureLayout::LINEAR, int layer=0, TextureFlag_ texture_flag=0)
+	static std::shared_ptr<Texture2D> Create(uint32_t width,uint32_t height, TextureLayout layout = TextureLayout::LINEAR,  TextureFlag_ texture_flag=0, uint32_t channel=4)
 	{
-		return std::make_shared<Texture2D>(width, height, layout,layer, texture_flag);
+		return std::make_shared<Texture2D>(width, height, layout, texture_flag,channel);
 	}
 
 public:
@@ -166,12 +168,17 @@ public:
 		memcpy(&color, m_bits+index, sizeof(color));
 		return color;
 	}
+
+	uint32_t get_width()const { return m_width; }
+	uint32_t get_height()const { return m_height; }
 private:
 	uint32_t m_width;
 	uint32_t m_height;
 	uint32_t m_channel;
 
 	uint32_t m_pitch;			//row=width*channel;
+
+	std::vector<Texture2D*> m_mipmaps;
 };
 
 
