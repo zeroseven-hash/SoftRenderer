@@ -9,7 +9,7 @@ include_directories("${CMAKE_CURRENT_LIST_DIR}/3rdparty/glad/include")
 include_directories("${CMAKE_CURRENT_LIST_DIR}/3rdparty/assimp/include")
 include_directories("${CMAKE_CURRENT_LIST_DIR}/3rdparty/stb_image")
 include_directories("${CMAKE_CURRENT_LIST_DIR}/3rdparty/imgui")
-
+include_directories("${CMAKE_CURRENT_LIST_DIR}/3rdparty/tinyddsloader")
 #organize files
 foreach(FILE ${all_files})
   #convert source file to absolute
