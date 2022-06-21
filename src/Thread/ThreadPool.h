@@ -53,7 +53,7 @@ public:
 				});
 		}
 		s_instance.m_signal.notify_one();
-		return wrapper->get_future();
+		return wrapper->get_future(); 
 	}
 
 

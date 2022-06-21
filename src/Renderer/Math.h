@@ -12,6 +12,7 @@ namespace TinyMath
 	//----------------------------------------------------------------
 	//vector defination
 	//----------------------------------------------------------------
+	
 	template<size_t N, typename T>
 	struct Vector
 	{

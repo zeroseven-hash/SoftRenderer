@@ -60,7 +60,7 @@ void Renderer::Init(uint32_t width, uint32_t height)
 	context.height_ = height;
 	context.renderer_flag = DRAW_PIXEL;
 
-	TextureSpecList spec = { {TextureLayout::LINEAR,0} };
+	TextureSpecList spec = { {TextureLayout::LINEAR,TextureFormat::RGBA8,0} };
 	context.default_buffer_ = new FrameBuffer(width, height, spec);
 	context.input_shadercontexts_.Resize(2000, 3*16);
 	context.triangles_.Resize(2000,1);

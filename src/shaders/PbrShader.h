@@ -67,7 +67,7 @@ public:
         N = Normalize(TBN * normal);
         auto& V = Normalize(u_view_pos - context[0].o_pos_);
         
-        Vec3f f0 = { 0.04,0.04,0.04 };
+        Vec3f f0 = { 0.04f,0.04f,0.04f };
         f0 = Mix(f0, albedo, metallic);
 
         float NdotV = Between(0.0f, 1.0f, VectorDot(N, V));
@@ -120,7 +120,7 @@ public:
 
         float denom = 4 * (NdotV * (1 - k) + k) * (NdotL * (1 - k) + k);
         //prevent denom =0;
-        return 1 / (denom+0.000001);
+        return 1.0f / (denom+0.000001f);
     }
 
 public:

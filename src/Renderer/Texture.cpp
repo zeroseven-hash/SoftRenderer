@@ -9,18 +9,39 @@
 #include"stb_image.h"
 #include"stb_image_write.h"
 
-Texture2D::Texture2D(uint32_t width, uint32_t height,TextureLayout layout, TextureFlag_ texture_flag_,uint32_t channel)
-	:m_width(width),m_height(height),Texture(layout)
+static uint32_t FormatToChannel(TextureFormat format)
+{
+	switch (format)
+	{
+	case TextureFormat::RGB8: return 3;
+	case TextureFormat::RGBA8: return 4;
+	case TextureFormat::RBG32F: return 12;
+	case TextureFormat::RGBA32F: return 16;
+	default:  {assert(false); break; }
+	}
+	return 0;
+}
+
+static TextureFormat ChannelToFormat(uint32_t channel)
+{
+	switch (channel)
+	{
+	case 3:return TextureFormat::RGB8;
+	case 4:return TextureFormat::RGBA8;
+	case 12:return TextureFormat::RBG32F;
+	case 16:return TextureFormat::RGBA32F;
+	default: {assert(false); return TextureFormat::UNKNOWN; }
+	}
+	return TextureFormat::UNKNOWN;
+}
+Texture2D::Texture2D(uint32_t width, uint32_t height, TextureFormat format, TextureLayout layout, TextureFlag_ texture_flag)
+	:m_width(width),m_height(height),m_format(format), Texture(layout)
 {
 	
-	if (texture_flag_ & SAMPLER_NEARST) m_filter = Filter::NEARST;
-	else if (texture_flag_ & SAMPLER_LINEAR) m_filter = Filter::LINEAR;
-	
-	if (texture_flag_ & SAMPLER_REPEAT) m_mode = ClipMode::REPEAT;
-	else if (texture_flag_ & SAMPLER_CLAMP_TO_DEGE) ClipMode::CLAMP_TO_EDGE;
-	else if (texture_flag_ & SAMPLER_CLAMP_TO_BORDER) ClipMode::CLAMP_TO_BORDER;
+	SetFilterAndMode(texture_flag);
 
-	m_channel = channel;
+	m_channel = FormatToChannel(m_format);
+
 	if (m_layout==TextureLayout::TILED)
 	{
 		int rest = m_width % s_tile_w;
@@ -41,31 +62,51 @@ Texture2D::Texture2D(uint32_t width, uint32_t height,TextureLayout layout, Textu
 void Texture2D::Fill(const Color& color) 
 {
 	uint8_t* end = m_bits + m_pitch * m_height;
-
-	if (m_channel == 3)
+	switch (m_channel)
 	{
-		using Color_Type = TinyMath::Vector<3, uint8_t>;
-		Color_Type col = { color.x_,color.y_,color.z_ };
-
-		std::fill((Color_Type*)m_bits, (Color_Type*)end, col);
+		case 3:
+		{
+			using ColorType = TinyMath::Vector<3, uint8_t>;
+			ColorType col = { color.x_,color.y_,color.z_ };
+			std::fill((ColorType*)m_bits, (ColorType*)end, col);
+			return;
+		}
+		case 4:
+		{
+			std::fill((uint32_t*)m_bits, (uint32_t*)end, *(uint32_t*)&color);
+			return;
+		}
+		case 12:
+		{
+			using ColorType = TinyMath::Vec3f;
+			ColorType col = TinyMath::TransformToVec4(color);
+			std::fill((ColorType*)m_bits, (ColorType*)end, col);
+			return;
+		}
+		case 16:
+		{
+			using ColorType = TinyMath::Vec4f;
+			ColorType col = TinyMath::TransformToVec4(color);
+			std::fill((ColorType*)m_bits, (ColorType*)end, col);
+			return;
+		}
+		default:
+		{
+			assert(false);
+			return;
+		}
 	}
-	else if (m_channel == 4)
-	{
-		std::fill((uint32_t*)m_bits, (uint32_t*)end, *(uint32_t*)&color);
-
-	}
-	else
-	{
-		assert(false);
-	}
+	
 }
 
-void Texture2D::LoadFile(const char* filename, TextureFlag_ texture_flag_ )
+void Texture2D::LoadFile(const char* filename, TextureFlag_ texture_flag )
 {
-	if (!m_bits)
-		delete[] m_bits;
+
+	
+	if (m_bits) delete[] m_bits;
 	stbi_set_flip_vertically_on_load(false);
-	uint8_t* data = stbi_load(filename,(int*) & m_width,(int*) & m_height,(int*) & m_channel, 0);
+	uint8_t* data = stbi_load(filename, (int*)&m_width, (int*)&m_height, (int*)&m_channel, 0);
+	m_format = ChannelToFormat(m_channel);
 	if (m_layout == TextureLayout::TILED)
 	{
 		int width = m_width;
@@ -97,13 +138,12 @@ void Texture2D::LoadFile(const char* filename, TextureFlag_ texture_flag_ )
 		m_pitch = m_width * m_channel;
 		m_bits = data;
 	}
-	if (texture_flag_ & SAMPLER_NEARST) m_filter = Filter::NEARST;
-	else if (texture_flag_ * SAMPLER_LINEAR) m_filter = Filter::LINEAR;
-
-	if (texture_flag_ & SAMPLER_REPEAT) m_mode = ClipMode::REPEAT;
-	else if (texture_flag_ & SAMPLER_CLAMP_TO_DEGE) ClipMode::CLAMP_TO_EDGE;
-	else if (texture_flag_ & SAMPLER_CLAMP_TO_BORDER) ClipMode::CLAMP_TO_BORDER;
+	
+	
+	SetFilterAndMode(texture_flag);
 }
+
+
 
 void Texture2D::SaveBMPFile(const char* filename)
 {
@@ -112,13 +152,7 @@ void Texture2D::SaveBMPFile(const char* filename)
 
 void Texture2D::GenerateMipmap()
 {
-	for (uint32_t i = 1; i < m_mipmaps.size(); i++)
-	{
-		delete m_mipmaps[i];
-		m_mipmaps[i] = nullptr;
-	}
-
-	m_mipmaps.clear();
+	ClearMipMem();
 	m_mipmaps.emplace_back(this);
 	if (m_bits == nullptr) { assert(false); }
 	uint32_t mip_width = m_width;
@@ -129,20 +163,20 @@ void Texture2D::GenerateMipmap()
 		mip_width = mip_width >> 1;
 		mip_height = mip_height >> 1;
 		
-		Texture2D* tex = new Texture2D(mip_width, mip_height, m_layout, (int)m_mode|(int)m_filter,m_channel);
+		Texture2D* tex = new Texture2D(mip_width, mip_height, m_format,m_layout, (int)m_mode|(int)m_filter);
 
 		//may have bug when tex is not square
-		for (int y = 0; y < mip_height; y++)
+		for (uint32_t y = 0; y < mip_height; y++)
 		{
-			for (int x = 0; x < mip_width; x++)
+			for (uint32_t x = 0; x < mip_width; x++)
 			{
 				auto& last_level_tex = m_mipmaps[last_level];
 
 				
-				auto color0 = TinyMath::TransformToVec4(last_level_tex->get_pixel(x * 2 + 0, y * 2 + 0));
-				auto color1 = TinyMath::TransformToVec4(last_level_tex->get_pixel(x * 2 + 1, y * 2 + 0));
-				auto color2 = TinyMath::TransformToVec4(last_level_tex->get_pixel(x * 2 + 0, y * 2 + 1));
-				auto color3 = TinyMath::TransformToVec4(last_level_tex->get_pixel(x * 2 + 1, y * 2 + 1));
+				auto color0 = last_level_tex->get_pixel(x * 2 + 0, y * 2 + 0);
+				auto color1 = last_level_tex->get_pixel(x * 2 + 1, y * 2 + 0);
+				auto color2 = last_level_tex->get_pixel(x * 2 + 0, y * 2 + 1);
+				auto color3 = last_level_tex->get_pixel(x * 2 + 1, y * 2 + 1);
 				
 				Color blender_color = TinyMath::TransformToColor((color0 + color1 + color2 + color3) / 4.0f);
 				
@@ -177,7 +211,7 @@ TinyMath::Vec4f Texture2D::Sampler2DLod(const TinyMath::Vec2f& uv,float lod)cons
 	}
 	default: return TinyMath::Vec4f(0.0f, 0.0f, 0.0f, 0.0f);
 	}
-	
+	return TinyMath::Vec4f(0.0f, 0.0f, 0.0f, 0.0f);
 }
  TinyMath::Vec4f Texture2D::Sampler2D(const TinyMath::Vec2f& uv)const
 {
@@ -221,10 +255,10 @@ TinyMath::Vec4f Texture2D::Sampler2DLod(const TinyMath::Vec2f& uv,float lod)cons
 		int x = (int)norm_uv.u_;
 		int y = (int)norm_uv.v_;
 
-		assert(x >= 0 && x < m_width);
-		assert(y >= 0 && y < m_height);
+		assert((uint32_t)x >= 0 && (uint32_t)x < m_width);
+		assert((uint32_t)y >= 0 && (uint32_t)y < m_height);
 
-		return TinyMath::TransformToVec4(get_pixel(x, y));
+		return get_pixel(x, y);
 	}
 	case Filter::LINEAR:
 	{
@@ -242,22 +276,21 @@ TinyMath::Vec4f Texture2D::Sampler2DLod(const TinyMath::Vec2f& uv,float lod)cons
 		int up = y;
 		int down = TinyMath::Between(0, (int)m_height - 1, y + 1);
 
-		assert(x >= 0 && x < m_width);
-		assert(y >= 0 && y < m_height);
+		assert((uint32_t)x >= 0 && (uint32_t)x < m_width);
+		assert((uint32_t)y >= 0 && (uint32_t)y < m_height);
 
-		Color c1 = get_pixel(left, up);
-		Color c2 = get_pixel(right, up);
+		auto c1 = get_pixel(left, up);
+		auto c2 = get_pixel(right, up);
 		c1=TinyMath::LinerInterpolation(c1, c2, dx);
 
 
-		Color c3 = get_pixel(left, down);
-		Color c4 = get_pixel(right, down);
+		auto c3 = get_pixel(left, down);
+		auto c4 = get_pixel(right, down);
 
 		c2 = TinyMath::LinerInterpolation(c3, c4, dx);
 		
 		
-		Color res = TinyMath::LinerInterpolation(c1, c2, dy);
-		return TinyMath::TransformToVec4(res);
+		return TinyMath::LinerInterpolation(c1, c2, dy);
 	}
 	default: return TinyMath::Vec4f(0.0f,0.0f,0.0f,0.0f);
 	}
