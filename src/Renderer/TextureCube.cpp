@@ -17,6 +17,15 @@ static TextureFormat DDSFormatToTextureFormat(tinyddsloader::DDSFile::DXGIFormat
 		break;
 	}
 }
+TinyMath::Vec4f TextureCube::SamplerCube(const TinyMath::Vec3f& uvw)
+{
+	return SamplerCubeLod(uvw, 0.0f);
+}
+TinyMath::Vec4f TextureCube::SamplerCubeLod(const TinyMath::Vec3f& uvw, float lod)
+{
+	auto a=std::max({ 1,2,3 });
+
+}
 void TextureCube::LoadDDS(const char* filename)
 {
 	using namespace tinyddsloader;
