@@ -21,7 +21,7 @@ void BlinnPhone::Init()
         aabb.mMax.y + aabb.mMin.y,
         aabb.mMax.z + aabb.mMin.z);
     center = center / 2.0f;
-    m_focus_dist = lens * 1.5f;
+    m_focus_dist = lens * 0.4f;
     m_center = center;
 
     auto camera = Application::Get()->get_camera();
@@ -51,7 +51,7 @@ void BlinnPhone::Update(TimeStep ts, Input::MouseState mouse_state)
     
     
     Renderer::Clear(COLOR_BUFFER_BIT | DEPTH_BUFFER_BIT);
-    Renderer::SetState(DRAW_PIXEL);
+    Renderer::SetState(DRAW_PIXEL|FACE_CULL);
     m_model->Draw(m_blinn_shader);
 
 

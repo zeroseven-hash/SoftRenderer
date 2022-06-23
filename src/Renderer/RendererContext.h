@@ -3,7 +3,7 @@
 
 #include"Math.h"
 #include"FrameBuffer.h"
-
+const int MAXVERTICES = 10;
 struct Vertex
 {
 	float* context_;
@@ -16,14 +16,11 @@ struct Vertex
 
 struct TriangleContext
 {
-	Vertex vs_[3];
-	Vertex* ordered_vs_[3];
-	/*bool top_left01_;
-	bool top_left12_;
-	bool top_left20_;*/
+	Vertex input_vs_[MAXVERTICES];
+	Vertex output_vs_[MAXVERTICES];
+	uint32_t vertices_nums;
 	bool tag_ = false;
-	int min_x_, max_x_, min_y_, max_y_;
-
+	bool swap_ = false;
 };
 template<typename T>
 struct CacheBlock
@@ -44,6 +41,8 @@ public:
 		data_ = new T[length * count];
 	}
 
+	T& operator[](size_t index) { return data_[index]; }
+	const T& operator[](size_t index)const { return data_[index]; }
 	~CacheBlock() { if (data_) delete[] data_; }
 
 public:

@@ -67,7 +67,7 @@ void Application::Init()
     Input::Init(window, std::bind(&Application::OnEvent, this, std::placeholders::_1));
     //init scene
     
-    m_camera = std::make_shared<Camera>(90.0f, m_width, m_height, 0.001f, 3000.0f);
+    m_camera = std::make_shared<Camera>(90.0f, m_width, m_height, 0.1f, 1000.0f);
     Renderer::Init(m_width, m_height);
     for (auto& scene : m_scenes) scene->Init();
     

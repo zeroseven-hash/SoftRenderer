@@ -24,8 +24,8 @@ public:
 		return std::make_shared<TextureCube>(filepath);
 	}
 
-	TinyMath::Vec4f SamplerCube(const TinyMath::Vec3f& uvw);
-	TinyMath::Vec4f SamplerCubeLod(const TinyMath::Vec3f& uvw, float lod);
+	//TinyMath::Vec4f SamplerCube(const TinyMath::Vec3f& uvw);
+	//TinyMath::Vec4f SamplerCubeLod(const TinyMath::Vec3f& uvw, float lod);
 private:
 
 	void LoadDDS(const char* filename);

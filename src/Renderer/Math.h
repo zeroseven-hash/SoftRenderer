@@ -307,6 +307,12 @@ namespace TinyMath
 		return std::min<T>(std::max<T>(xmin, x), xmax);
 	}
 
+	template<typename T>
+	inline T LinerInterpolation(const T& v1, const T& v2, float t)
+	{
+		return static_cast<T>(v1 + (v2 - v1) * t);
+	}
+
 	template<size_t N,typename T>
 	inline  Vector<N, T> LinerInterpolation(const Vector<N, T>& v1, const Vector<N, T>& v2, float t)
 	{
@@ -846,3 +852,73 @@ namespace TinyMath
 	
 }
 typedef TinyMath::Vec4u8i Color;
+
+
+//Utils
+#include<array>
+#include<assert.h>
+namespace Utils
+{
+
+	template<typename T, size_t MAXLEN>
+	class CirCleQueue
+	{
+	public:
+		CirCleQueue() = default;
+
+
+		bool Empty() const
+		{
+			return m_front == m_rear;
+		}
+
+		bool Full() const
+		{
+			return (m_rear + 1) % MAXLEN == m_front;
+		}
+
+		void Clear()
+		{
+			m_front = m_rear = 0;
+		}
+
+		bool Push(const T& ele)
+		{
+			if (Full())
+			{
+				assert(false);
+				return false;
+			}
+			m_data[m_rear] = ele;
+			m_rear = (m_rear + 1) % MAXLEN;
+			return true;
+		}
+
+
+		bool Pop()
+		{
+			if (Empty())
+			{
+				assert(false);
+				return false;
+			};
+			m_front = (m_front + 1) % MAXLEN;
+		}
+		T Front()const
+		{
+			if (Empty()) assert(false);
+			return m_data[m_front];
+		}
+		size_t Size() const
+		{
+			return (size_t)((m_rear - m_front + MAXLEN) % MAXLEN);
+		}
+
+
+	private:
+		std::array<T, MAXLEN> m_data;
+		int m_front = 0;
+		int m_rear = 0;
+	};
+
+}
