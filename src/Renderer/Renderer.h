@@ -44,7 +44,7 @@ public:
 
 
 	static void Init(uint32_t width,uint32_t height);
-	static void Clear(BufferFlag flag,const Color& color=Color(0x00,0x00,0x00,0x00d),float depth=1.0f);
+	static void Clear(BufferFlag flag,const Color& color=Color(0x00,0x00,0x00,0x00),float depth=1.0f);
 	static void Bind(FrameBuffer* fb);
 	static void UnBind();
 	static void SetViewPort(uint32_t width, uint32_t height);
@@ -217,8 +217,6 @@ private:
 					triangles.swap_ = true;
 					break;
 				}
-				else if (normal.z_ == 0.0f)
-					return;
 			}
 		}
 		if(tri_cnt>0) context.triangles_[trangle_id].tag_ = true;

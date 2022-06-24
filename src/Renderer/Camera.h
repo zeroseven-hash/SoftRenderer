@@ -44,8 +44,8 @@ public:
 
     float get_distance() const { return m_distance; }
     const Vec3f& get_focal_point()const { return m_focal_point; }
-    const Mat4f get_view_mat()const { return  m_view_mat; }
-    const Mat4f get_projection_mat()const { return m_projection_mat; }
+    const Mat4f& get_view_mat()const { return  m_view_mat; }
+    const Mat4f& get_projection_mat()const { return m_projection_mat; }
 
 
     Vec3f get_up_direction()const;

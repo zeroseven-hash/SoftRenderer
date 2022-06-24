@@ -46,8 +46,6 @@ void BlinnPhone::Update(TimeStep ts, Input::MouseState mouse_state)
     
     m_blinn_shader.u_mvp = camera->get_projection_mat() * camera->get_view_mat();
     m_blinn_shader.u_view_pos = camera->get_position();
-    uint32_t width = Application::Get()->get_width();
-    uint32_t height = Application::Get()->get_height();
     
     
     Renderer::Clear(COLOR_BUFFER_BIT | DEPTH_BUFFER_BIT);

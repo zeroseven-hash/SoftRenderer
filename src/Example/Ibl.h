@@ -1,6 +1,7 @@
 #pragma once
 #include"Common/Scene.h"
 
+#include"shaders/SkyBoxShader.h"
 #include"Renderer/TextureCube.h"
 class Ibl :public Scene
 {
@@ -15,5 +16,5 @@ public:
 private:
 	
 	std::shared_ptr<TextureCube> m_skybox;
-
+	SkyBoxShader<> m_cube_shader;
 };

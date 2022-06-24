@@ -1,13 +1,12 @@
 #pragma once
 #include"BlinnPhongShader.h"
 
-using namespace TinyMath;
 template<typename Context = BlinnContext>
 class PbrShader :public Shader<Context>
 {
 public:
     template<typename VAO>
-    TinyMath::Vec4f VertexShader(const VAO& vao, int index, Context& context) const
+    Vec4f VertexShader(const VAO& vao, int index, Context& context) const
     {
         const VAO::VertexType& v = vao.get_vertex(index);
 
@@ -43,7 +42,7 @@ public:
         return u_mvp * total_pos;
     }
 
-    TinyMath::Vec4f FragmentShader(const Context* context) const
+    Vec4f FragmentShader(const Context* context) const
     {
         //set data;
         const float pi = 3.14158926f;

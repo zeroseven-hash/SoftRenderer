@@ -17,15 +17,66 @@ static TextureFormat DDSFormatToTextureFormat(tinyddsloader::DDSFile::DXGIFormat
 		break;
 	}
 }
-//TinyMath::Vec4f TextureCube::SamplerCube(const TinyMath::Vec3f& uvw)
-//{
-//	return SamplerCubeLod(uvw, 0.0f);
-//}
-//TinyMath::Vec4f TextureCube::SamplerCubeLod(const TinyMath::Vec3f& uvw, float lod)
-//{
-//	auto a=std::max({ 1,2,3 });
-//
-//}
+TinyMath::Vec4f TextureCube::SamplerCube(const TinyMath::Vec3f& uvw)
+{
+	return SamplerCubeLod(uvw, 0.0f);
+}
+TinyMath::Vec4f TextureCube::SamplerCubeLod(const TinyMath::Vec3f& uvw, float lod)
+{
+	float abs_x = std::abs(uvw.x_);
+	float abs_y = std::abs(uvw.y_);
+	float abs_z = std::abs(uvw.z_);
+	float mag = std::max({abs_x,abs_y,abs_z});
+	if (mag == abs_x)
+	{
+		TinyMath::Vec2f coords = { uvw.z_ / mag+1.0f,uvw.y_ / mag+1.0f };
+		coords /= 2.0f;
+		coords.y_ = 1.0f - coords.y_;
+		if (uvw.x_ > 0)
+		{
+			coords.x_ = 1.0f - coords.x_;
+			return m_textures[0]->Sampler2DLod(coords, lod);
+		}
+		else if (uvw.x_ < 0)
+		{
+
+			return m_textures[1]->Sampler2DLod(coords, lod);
+		}
+
+
+	}
+	else if (mag == abs_y)
+	{
+		TinyMath::Vec2f coords = { uvw.x_ / mag + 1.0f,uvw.z_ / mag + 1.0f };
+		coords /= 2.0f;
+		coords.y_ = 1.0f - coords.y_;
+		if (uvw.y_ > 0)
+		{
+			coords.y_ = 1.0f - coords.y_;
+			return m_textures[2]->Sampler2DLod(coords, lod);
+		}
+		else if (uvw.y_ < 0)
+		{
+			return m_textures[3]->Sampler2DLod(coords, lod);
+		}
+	}
+	else if (mag == abs_z)
+	{
+		TinyMath::Vec2f coords = { uvw.x_ / mag + 1.0f,uvw.y_ / mag + 1.0f };
+		coords /= 2.0f;
+		coords.y_ = 1.0f - coords.y_;
+		if (uvw.z_ > 0)
+		{
+			return m_textures[4]->Sampler2DLod(coords, lod);
+
+		}
+		else if (uvw.z_ < 0)
+		{
+			coords.x_ = 1.0f - coords.x_;
+			return m_textures[5]->Sampler2DLod(coords, lod);
+		}
+	}
+}
 void TextureCube::LoadDDS(const char* filename)
 {
 	using namespace tinyddsloader;

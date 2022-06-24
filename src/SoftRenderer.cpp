@@ -7,14 +7,15 @@
 #include"tinyddsloader.h"
 int main()
 {
-    ThreadPool::Init(std::thread::hardware_concurrency());
+    //ThreadPool::Init(std::thread::hardware_concurrency());
+    ThreadPool::Init(1);
 
     Application* app = Application::CreateApp("SoftRenderer", 980, 720);
 
   
-    shared_ptr<BlinnPhone> blinn_phone = std::make_shared<BlinnPhone>("Blinn-Phone");
+  /*  shared_ptr<BlinnPhone> blinn_phone = std::make_shared<BlinnPhone>("Blinn-Phone");
     blinn_phone->Init();
-    app->AddScene(blinn_phone);
+    app->AddScene(blinn_phone);*/
 
     //shared_ptr<SkeletalAnimation> skeletal_animation = std::make_shared<SkeletalAnimation>("SkeletalAnimation");
     //skeletal_animation->Init();
@@ -26,10 +27,10 @@ int main()
     //app->AddScene(pbr);
 
 
-    /*std::shared_ptr<Ibl> ibl = std::make_shared<Ibl>("Ibl");
+    std::shared_ptr<Ibl> ibl = std::make_shared<Ibl>("Ibl");
     ibl->Init();
 
-    app->AddScene(ibl);*/
+    app->AddScene(ibl);
 
     app->Run();
 }
