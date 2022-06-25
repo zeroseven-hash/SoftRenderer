@@ -129,6 +129,7 @@ namespace TinyMath
 		return b;
 	}
 
+
 	// = (a == b) ? true : false
 	template <size_t N, typename T>
 	inline bool operator == (const Vector<N, T>& a, const Vector<N, T>& b) {
@@ -150,6 +151,13 @@ namespace TinyMath
 		return c;
 	}
 
+
+	template <size_t N, typename T>
+	inline Vector<N, T> operator + (const Vector<N, T>& a, T b) {
+		Vector<N, T> c;
+		for (size_t i = 0; i < N; i++) c[i] = a[i] + b;
+		return c;
+	}
 	// = a - b
 	template <size_t N, typename T>
 	inline Vector<N, T> operator - (const Vector<N, T>& a, const Vector<N, T>& b) {
@@ -158,6 +166,12 @@ namespace TinyMath
 		return c;
 	}
 
+	template <size_t N, typename T>
+	inline Vector<N, T> operator - (const Vector<N, T>& a, T b) {
+		Vector<N, T> c;
+		for (size_t i = 0; i < N; i++) c[i] = a[i] - b;
+		return c;
+	}
 	// = a * b，不是点乘也不是叉乘，而是各个元素分别相乘，色彩计算时有用
 	template <size_t N, typename T>
 	inline Vector<N, T> operator * (const Vector<N, T>& a, const Vector<N, T>& b) {
@@ -723,7 +737,10 @@ namespace TinyMath
 		result[2][3] = -(far + near) / (far - near);
 		return result;
 	}
-
+	inline Vec3f Reflect(const Vec3f& i, const Vec3f& n)
+	{
+		return i - 2.0f * n * VectorDot(i, n);
+	}
 
 
 

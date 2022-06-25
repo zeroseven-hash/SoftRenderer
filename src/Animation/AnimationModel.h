@@ -107,7 +107,9 @@ private:
     float m_duration;
     float m_ticks_per_second;
     float m_current_time=0.0f;
-    
+    bool m_has_animation = false;
+
+
     AssimpNodeData m_RootNode;
     aiMatrix4x4 m_global_transform_inverse;
 };
@@ -132,6 +134,7 @@ inline void AnimationModel<V>::LoadModel(const char* filepath)
 template<typename V>
 inline void AnimationModel<V>::UpdateAnime(TimeStep ts)
 {
+    if (!m_has_animation) return;
     m_current_time += ts.get_second() * m_ticks_per_second;
     m_current_time = std::fmod(m_current_time, m_duration);
     UpdateFinalMatrix(m_RootNode,aiMatrix4x4());
@@ -212,6 +215,10 @@ Mesh<V> AnimationModel<V>::ProcessMesh(aiMesh* mesh, const aiScene* scene)
     std::vector<TextureCompnent> mellic_rough_maps = LoadMaterialTextures(material, aiTextureType_METALNESS);
     textures.insert(textures.end(), mellic_rough_maps.begin(), mellic_rough_maps.end());
     
+    
+    std::vector<TextureCompnent> ao_maps = LoadMaterialTextures(material,aiTextureType_LIGHTMAP);
+    textures.insert(textures.end(), ao_maps.begin(), ao_maps.end());
+
     ExtractBoneWeightForVertices(vertices, mesh, scene);
 
    
@@ -226,6 +233,12 @@ Mesh<V> AnimationModel<V>::ProcessMesh(aiMesh* mesh, const aiScene* scene)
 template<typename V>
 inline void AnimationModel<V>::LoadAnimation(const aiScene* scene)
 {
+    if (scene->HasAnimations()) m_has_animation = true;
+    else
+    {
+        m_has_animation = false;
+        return;
+    }
     auto animation = scene->mAnimations[0];
     m_duration = (float)animation->mDuration;
     m_ticks_per_second = (float)animation->mTicksPerSecond;

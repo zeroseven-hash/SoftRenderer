@@ -63,6 +63,7 @@ public:
 
             if(type==aiTextureType_NORMALS) shader.SetTexture(5, m_textures[i].texture_.get());
             if (type == aiTextureType_METALNESS) shader.SetTexture(6, m_textures[i].texture_.get());
+            if (type == aiTextureType_LIGHTMAP) shader.SetTexture(7, m_textures[i].texture_.get());
            // m_textures[i].SaveFileBMP("texture.bmp");
         }
         Renderer::Submit(m_vao, shader);
@@ -102,6 +103,7 @@ protected:
     std::vector<TextureCompnent> LoadMaterialTextures(aiMaterial* mat, aiTextureType type);
 protected:
     std::vector<Mesh<V>> m_meshes;
+    std::unordered_map<std::string, std::shared_ptr<Texture2D>> m_textures_;
     aiAABB m_AABB;
     std::string m_dir;
 };
@@ -231,9 +233,17 @@ std::vector<TextureCompnent> Model<V>::LoadMaterialTextures(aiMaterial* mat, aiT
 
         std::string filename = std::string(str.C_Str());
         filename = m_dir + '/' + filename;
-        texture.texture_ = std::make_shared<Texture2D>(filename.c_str(), TextureLayout::LINEAR);
+        if (m_textures_.count(filename))
+        {
+            texture.texture_ = m_textures_[filename];
+        }
+        else
+        {
+            texture.texture_ = std::make_shared<Texture2D>(filename.c_str(), TextureLayout::LINEAR);
+            m_textures_[filename] = texture.texture_;
+        }
 
-        texture.texture_->GenerateMipmap();
+        //texture.texture_->GenerateMipmap();
         texture.id_ = texturescount++;
         texture.type_ = type;
         textures.push_back(texture);

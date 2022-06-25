@@ -194,24 +194,22 @@ void Texture2D::GenerateMipmap()
 
 TinyMath::Vec4f Texture2D::Sampler2DLod(const TinyMath::Vec2f& uv,float lod)const
 {
-	lod = TinyMath::Between(0.0f, float(m_mipmaps.size() - 1), lod);
 
-	switch (m_filter)
+	int lower_lod = (int)std::floor(lod);
+	int up_lod = (int)std::ceil(lod);
+	lower_lod = TinyMath::Between(0, (int)m_mipmaps.size() - 1, lower_lod);
+	up_lod = TinyMath::Between(0, (int)m_mipmaps.size() - 1, up_lod);
+	if (lower_lod == up_lod)
 	{
-	case Filter::NEARST:
+		return m_mipmaps[lower_lod]->Sampler2D(uv);
+	}
+	else
 	{
-		uint32_t layer = uint32_t(lod);
-		return m_mipmaps[layer]->Sampler2D(uv);
-	}
-	case Filter::LINEAR:
-	{
-		//TODO Linaer interpolate
-		assert(false);
-		break;
-	}
-	default: return TinyMath::Vec4f(0.0f, 0.0f, 0.0f, 0.0f);
-	}
-	return TinyMath::Vec4f(0.0f, 0.0f, 0.0f, 0.0f);
+		float t = lod - lower_lod;
+		TinyMath::Vec4f color1 = m_mipmaps[lower_lod]->Sampler2D(uv);
+		TinyMath::Vec4f color2 = m_mipmaps[up_lod]->Sampler2D(uv);
+		return TinyMath::LinerInterpolation(color1, color2, t);
+	}	
 }
  TinyMath::Vec4f Texture2D::Sampler2D(const TinyMath::Vec2f& uv)const
 {

@@ -49,6 +49,7 @@ TinyMath::Vec4f TextureCube::SamplerCubeLod(const TinyMath::Vec3f& uvw, float lo
 	{
 		TinyMath::Vec2f coords = { uvw.x_ / mag + 1.0f,uvw.z_ / mag + 1.0f };
 		coords /= 2.0f;
+
 		coords.y_ = 1.0f - coords.y_;
 		if (uvw.y_ > 0)
 		{
@@ -64,6 +65,7 @@ TinyMath::Vec4f TextureCube::SamplerCubeLod(const TinyMath::Vec3f& uvw, float lo
 	{
 		TinyMath::Vec2f coords = { uvw.x_ / mag + 1.0f,uvw.y_ / mag + 1.0f };
 		coords /= 2.0f;
+
 		coords.y_ = 1.0f - coords.y_;
 		if (uvw.z_ > 0)
 		{
@@ -115,10 +117,7 @@ void TextureCube::LoadDDS(const char* filename)
 
 		}
 		auto tex = mipmaps[0];
-		if (m_layers != 1)
-		{
-			tex->set_mipmaps(std::move(mipmaps));
-		}
+		tex->set_mipmaps(std::move(mipmaps));
 		m_textures[i] = tex;
 	}
 

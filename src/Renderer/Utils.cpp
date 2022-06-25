@@ -55,13 +55,22 @@ namespace Utils
 	};
 
 
+	//const VertexArrayBuffer<SphereVertex>& GetSphereBuffer()
+	//{
+	//	static Sphere sphere;
+	//	return sphere.vao_;
+	//}
 
-
-
+	
 	const VertexArrayBuffer<CubeVertex>& GetCubeBuffer()
 	{
 		static VertexArrayBuffer<CubeVertex> cubebuffer(s_cube_vs, s_cube_indices);
 		return cubebuffer;
 	}
+
+	/*Sphere::Sphere()
+	{
+		
+	}*/
 
 }

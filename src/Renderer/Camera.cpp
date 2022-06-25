@@ -101,8 +101,8 @@ void Camera::mouseRotate(float percent)
 	auto right_dir = get_right_direction();
 	auto up_dir = get_up_direction();
 
-	Quaternion rotate_y(right_dir, deltay);
-	Quaternion rotate_x(up_dir, deltax);
+	Quaternion rotate_y(right_dir, deltay* m_yspeed*9.0f);
+	Quaternion rotate_x(up_dir, deltax*m_xspeed*9.0f);
 
 	m_rotation = rotate_x*m_rotation;
 	m_rotation = rotate_y * m_rotation;
@@ -121,7 +121,7 @@ void Camera::mouseMiddle(float percent)
 	m_delta_move[0] -= deltax;
 	m_delta_move[1] -= deltay;
 	m_focal_point -= get_right_direction() * deltax * m_xspeed * m_distance * 7.345f;
-	m_focal_point += get_up_direction() * deltay * m_yseppd * m_distance * 5.444f;
+	m_focal_point += get_up_direction() * deltay * m_yspeed * m_distance * 5.444f;
 	updatePostion();
 }
 void Camera::mouseRightAndScroll(float percent)
@@ -148,6 +148,9 @@ void Camera::updateView()
 {
 	Vec3f pos = get_position();
 	m_view_mat = TinyMath::LookAt(pos, m_focal_point, get_up_direction());
+
+	m_env_view_mat = TinyMath::LookAt(Vec3f{0.0f,0.0f,0.0f},m_focal_point-pos,Vec3f(0.0f,1.0f,0.0f));
+	
 }
 
 void Camera::updateProject()
@@ -161,7 +164,7 @@ void Camera::updateSpeed()
 	m_xspeed = 0.0487f * (x * x) - 0.2578f * x + 0.3021f;
 
 	float y = std::min(m_height / 1000.0f, 2.4f); // max = 2.4f
-	m_yseppd = 0.0487f * (y * y) - 0.2578f * y + 0.3021f;
+	m_yspeed = 0.0487f * (y * y) - 0.2578f * y + 0.3021f;
 }
 
 

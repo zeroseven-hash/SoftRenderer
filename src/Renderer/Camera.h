@@ -46,7 +46,7 @@ public:
     const Vec3f& get_focal_point()const { return m_focal_point; }
     const Mat4f& get_view_mat()const { return  m_view_mat; }
     const Mat4f& get_projection_mat()const { return m_projection_mat; }
-
+    const Mat4f& get_env_view_mat()const { return m_env_view_mat; }
 
     Vec3f get_up_direction()const;
     Vec3f get_right_direction()const;
@@ -66,6 +66,7 @@ private:
     void updateView();
     void updateProject();
     void updateSpeed();
+    
 private:
 
     float		m_fov;
@@ -80,7 +81,7 @@ private:
     //for right hand
     Mat4f		m_view_mat;
     Mat4f		m_projection_mat;
-
+    Mat4f       m_env_view_mat;
 
     float		m_time_step = 0.0f;
     Quaternion	m_rotation;
@@ -88,7 +89,7 @@ private:
 
     //only for MouseMiddle;
     float m_xspeed;
-    float m_yseppd;
+    float m_yspeed;
 
 
     float		m_delta_rotation[2] = { 0.0f,0.0f };		//for mouseRotate

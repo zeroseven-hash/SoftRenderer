@@ -8,15 +8,28 @@
 namespace Utils
 {
 	
-
+	
 	struct CubeVertex
 	{
 		TinyMath::Vec4f pos_;
 		TinyMath::Vec3f normal_;
 	};
+	struct SphereVertex
+	{
+		TinyMath::Vec4f pos_;
+		TinyMath::Vec2f uv_coords_;
+		TinyMath::Vec3f normal_;
+	};
+	struct Sphere
+	{
+		
+	};
 
 	const VertexArrayBuffer<CubeVertex>& GetCubeBuffer();
-	
+	const VertexArrayBuffer<SphereVertex>& GetSphereBuffer();
+
+
+
 
 	template<typename SHADER>
 	void RenderCube(SHADER& shader)
@@ -24,6 +37,13 @@ namespace Utils
 		const auto& vao = GetCubeBuffer();
 		Renderer::Submit(vao, shader);
 	}
+
+	//template<typename SHADER>
+	//void RenderSphere(SHADER& shader)
+	//{
+	//	const auto& vao = GetSphereBuffer();
+	//	Renderer::Submit(vao, shader);
+	//}
 
 	template<typename T, size_t MAXLEN>
 	class CirCleQueue

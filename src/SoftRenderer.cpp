@@ -22,14 +22,13 @@ int main()
     //app->AddScene(skeletal_animation);
 
     
-    //shared_ptr<Pbr> pbr = std::make_shared<Pbr>("Pbr");
-    //pbr->Init();
-    //app->AddScene(pbr);
+  /*  shared_ptr<Pbr> pbr = std::make_shared<Pbr>("Pbr");
+    pbr->Init();
+    app->AddScene(pbr);*/
 
 
     std::shared_ptr<Ibl> ibl = std::make_shared<Ibl>("Ibl");
     ibl->Init();
-
     app->AddScene(ibl);
 
     app->Run();

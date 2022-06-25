@@ -255,7 +255,7 @@ private:
 	uint32_t m_pitch;			//pitch=width*channel;
 	TextureFormat m_format;
 
-	std::vector<Texture2D*> m_mipmaps;
+	std::vector<Texture2D*> m_mipmaps=std::vector<Texture2D*>();
 };
 
 
