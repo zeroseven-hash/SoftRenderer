@@ -13,7 +13,7 @@ void Ibl::Init()
 	m_model = std::make_shared<AnimationModel<>>("../assets/helmat/DamagedHelmet.gltf");
 
 
-	m_skybox = TextureCube::Create("../assets/skybox/skyEnvHDR.dds");
+	//m_skybox = TextureCube::Create("../assets/skybox/skyEnvHDR.dds");
 	m_skybox_irr = TextureCube::Create("../assets/skybox/skyDiffuseHDR.dds");
 	m_skybox_spec = TextureCube::Create("../assets/skybox/skySpecularHDR.dds");
 	m_brdf = Texture2D::Create("../assets/ibl_brdf_lut.png");
@@ -73,7 +73,7 @@ void Ibl::Update(TimeStep ts, Input::MouseState mouse_state)
 
 	//skybox render
 	m_cube_shader.u_mvp = camera->get_projection_mat() * camera->get_env_view_mat();
-	m_cube_shader.u_skybox = m_skybox;
+	m_cube_shader.u_skybox = m_skybox_irr;
 	Renderer::SetState(DRAW_PIXEL);
 	Utils::RenderCube(m_cube_shader);
     Renderer::FlushFrame();
