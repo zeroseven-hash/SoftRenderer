@@ -69,7 +69,7 @@ static float CalRatio(const TinyMath::Vec4f& prev, const TinyMath::Vec4f& curr, 
 
 static bool IsVertexVisable(const TinyMath::Vec4f& pos)
 {
-	return std::abs(pos.x_) <= pos.w_ && std::abs(pos.y_) <= pos.w_ && std::abs(pos.z_) <= pos.w_;
+	return std::abs(pos.x_) <= pos.w_ && std::abs(pos.y_) <= pos.w_ && std::abs(pos.z_) <= pos.w_&&pos.w_!=0.0f;
 }
 
 

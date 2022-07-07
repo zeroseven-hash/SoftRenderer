@@ -31,15 +31,20 @@ public:
 		return u_mvp * v.pos_;
 	}
 
-	TinyMath::Vec4f FragmentShader(const Context* context) const
+	TinyMath::Vec4f FragmentShader(const Context* context, const Context delta[2]) const
 	{
-		Vec3f normal = m_textures[u_normal]->Sampler2D(context[0].o_coords_);
-		normal = normal * 2.0f - Vec3f(1.0f, 1.0f, 1.0f);
-		float ao = m_textures[u_ao]->Sampler2D(context[0].o_coords_).x_;
+		float ddx = delta[0].o_coords_.x_*m_textures[u_albedo]->get_width();
+		float ddy = delta[0].o_coords_.y_* m_textures[u_albedo]->get_height();
+		float lod = CalLod(TinyMath::Vec2f(ddx, ddy));
 
-		Vec3f emissive = ToLinear(m_textures[u_emmisive]->Sampler2D(context[0].o_coords_));
-		Vec3f albedo = ToLinear(m_textures[u_albedo]->Sampler2D(context[0].o_coords_));
-		Vec3f metallic_roughness = m_textures[u_metalness_roughness]->Sampler2D(context[0].o_coords_);
+
+		Vec3f normal = m_textures[u_normal]->Sampler2DLod(context[0].o_coords_,lod);
+		normal = normal * 2.0f - Vec3f(1.0f, 1.0f, 1.0f);
+		float ao = m_textures[u_ao]->Sampler2DLod(context[0].o_coords_,lod).x_;
+
+		Vec3f emissive = m_textures[u_emmisive]->Sampler2DLod(context[0].o_coords_,lod);
+		Vec3f albedo = ToLinear(m_textures[u_albedo]->Sampler2DLod(context[0].o_coords_,lod));
+		Vec3f metallic_roughness = m_textures[u_metalness_roughness]->Sampler2DLod(context[0].o_coords_,lod);
 		float metallic = metallic_roughness.b_;
 		float roughness = metallic_roughness.g_;
 		static Mat3f TBN;
@@ -67,8 +72,7 @@ public:
 		Vec3f specular = prefilterColor * (F * brdf.x_ + brdf.y_);
 		
 		Vec3f ambient = emissive+(kd*diffuse+specular)*ao;
-		return ToGammar(Exposure(ambient, 1.0f));
-
+		return ToGammar(Exposure(ambient, 2.0f));
 	}
 
 	static TinyMath::Vec3f FresnelSchlickRoughness(float cos, const TinyMath::Vec3f& f0, float rough)

@@ -28,11 +28,11 @@ void Ibl::Init()
 		aabb.mMax.y + aabb.mMin.y,
 		aabb.mMax.z + aabb.mMin.z);
 	center = center / 2.0f;
-	m_focus_dist = lens * 30.0f;
+	m_focus_dist = 1.5f;
 	m_center = Vec3f(0.0f, 0.0f, 0.0f);
 
-
-	m_ibl_shader.u_model = TinyMath::Rotate(TinyMath::Mat4f::GetIdentity(),90.0f,TinyMath::Vec3f(1.0f,0.0f,0.0f));
+	m_ibl_shader.u_model = TinyMath::Scale(TinyMath::Mat4f::GetIdentity(), TinyMath::Vec3f(1.0f / lens, 1.0f / lens, 1.0f / lens));
+	m_ibl_shader.u_model = TinyMath::Rotate(m_ibl_shader.u_model,90.0f,TinyMath::Vec3f(1.0f,0.0f,0.0f));
 	m_ibl_shader.u_skybox_irr = m_skybox_irr;
 	m_ibl_shader.u_skybox_spec = m_skybox_spec;
 	m_ibl_shader.SetTexture(8, m_brdf.get());
@@ -60,7 +60,7 @@ void Ibl::Update(TimeStep ts, Input::MouseState mouse_state)
 
 
     Renderer::Clear(COLOR_BUFFER_BIT | DEPTH_BUFFER_BIT);
-    Renderer::SetState(DRAW_PIXEL);
+    Renderer::SetState(DRAW_PIXEL|FACE_CULL);
 
 	//sphere render
 	m_ibl_shader.u_mvp = camera->get_projection_mat() * camera->get_view_mat()*m_ibl_shader.u_model;
@@ -72,8 +72,9 @@ void Ibl::Update(TimeStep ts, Input::MouseState mouse_state)
 
 
 	//skybox render
-    m_cube_shader.u_mvp = camera->get_projection_mat() * camera->get_env_view_mat();
+	m_cube_shader.u_mvp = camera->get_projection_mat() * camera->get_env_view_mat();
 	m_cube_shader.u_skybox = m_skybox;
+	Renderer::SetState(DRAW_PIXEL);
 	Utils::RenderCube(m_cube_shader);
     Renderer::FlushFrame();
 }

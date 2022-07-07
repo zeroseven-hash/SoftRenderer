@@ -20,7 +20,7 @@ void SkeletalAnimation::Init()
         aabb.mMax.y + aabb.mMin.y,
         aabb.mMax.z + aabb.mMin.z);
     center = center / 2.0f;
-    m_focus_dist = lens * 5.0f;
+    m_focus_dist = lens * 3.0f;
     m_center = center;
    
     auto camera = Application::Get()->get_camera();

@@ -37,11 +37,11 @@ public:
         context.o_normal_ = u_model *Vec4f(v.normal_);
         context.o_normal_ = Normalize(context.o_normal_);
         context.o_coords_ = v.coords_;
-        context.o_pos_ = u_model * v.pos_;
+        context.o_pos_ = u_model * total_pos;
         return u_mvp * total_pos;
     }
 
-    TinyMath::Vec4f FragmentShader(const Context* context) const
+    TinyMath::Vec4f FragmentShader(const Context* context,const Context delta[2]) const
     {
 
         //fragment shader

@@ -42,7 +42,7 @@ public:
         return u_mvp * total_pos;
     }
 
-    Vec4f FragmentShader(const Context* context) const
+    Vec4f FragmentShader(const Context* context, const Context delta[2]) const
     {
         //set data;
         const float pi = 3.14158926f;

@@ -239,11 +239,11 @@ std::vector<TextureCompnent> Model<V>::LoadMaterialTextures(aiMaterial* mat, aiT
         }
         else
         {
-            texture.texture_ = std::make_shared<Texture2D>(filename.c_str(), TextureLayout::LINEAR);
+            texture.texture_ = Texture2D::Create(filename.c_str(), TextureLayout::LINEAR, SAMPLER_LINEAR | SAMPLER_REPEAT);
             m_textures_[filename] = texture.texture_;
         }
 
-        //texture.texture_->GenerateMipmap();
+        texture.texture_->GenerateMipmap();
         texture.id_ = texturescount++;
         texture.type_ = type;
         textures.push_back(texture);

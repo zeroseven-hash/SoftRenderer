@@ -30,7 +30,7 @@ public:
     TinyMath::Vec4f VertexShader(const VAO& vao, int index, Context& context)const{}
 
     //fragmentshader
-    TinyMath::Vec4f FragmentShader(const Context* input)const{}
+    TinyMath::Vec4f FragmentShader(const Context* input,const Context delta[2])const {}
 
     void SetTexture(int index, Texture2D* tex) { 
         assert(index < 32);
@@ -49,3 +49,4 @@ TinyMath::Vec4f ToLinear(const TinyMath::Vec4f& color);
 TinyMath::Vec4f ToGammar(const TinyMath::Vec4f& color);
 TinyMath::Vec3f ToGammar(const TinyMath::Vec3f& color);
 TinyMath::Vec3f Exposure(const TinyMath::Vec3f& color,float exposure);
+float CalLod(const TinyMath::Vec2f& dxdy);

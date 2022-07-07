@@ -22,10 +22,10 @@ public:
 		return TinyMath::Vec4f(pos.x_,pos.y_,pos.w_*0.999f,pos.w_);
 	}
 
-	TinyMath::Vec4f FragmentShader(const Context* context) const
+	TinyMath::Vec4f FragmentShader(const Context* context, const Context delta[2]) const
 	{
 		
-		return ToGammar(Exposure(u_skybox->SamplerCube(context->dir_),1.0f));
+		return ToGammar(Exposure(u_skybox->SamplerCube(context->dir_),2.0f));
 	}
 public:
 	

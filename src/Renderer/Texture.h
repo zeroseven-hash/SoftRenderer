@@ -74,9 +74,9 @@ using TextureHandle = std::shared_ptr<Texture>;
 class Texture2D:public Texture
 {
 public:
-	Texture2D(const char* filepath, TextureLayout layout = TextureLayout::LINEAR):Texture(layout)
+	Texture2D(const char* filepath, TextureLayout layout = TextureLayout::LINEAR,TextureFlag_ teture_flag=0):Texture(layout)
 	{
-		LoadFile(filepath);
+		LoadFile(filepath,teture_flag);
 	}
 	Texture2D(uint32_t width, uint32_t height,TextureFormat format,TextureLayout layout=TextureLayout::LINEAR,TextureFlag_ texture_flag = 0);
 	
@@ -128,13 +128,13 @@ public:
 	* layer:mipmap layer
 	* flag:sampler flag
 	*/
-	static std::shared_ptr<Texture2D> Create(uint32_t width,uint32_t height, TextureFormat format,TextureLayout layout = TextureLayout::LINEAR,  TextureFlag_ texture_flag=0)
+	static std::shared_ptr<Texture2D> Create(uint32_t width,uint32_t height, TextureFormat format,TextureLayout layout = TextureLayout::LINEAR, TextureFlag_ texture_flag=0)
 	{
 		return std::make_shared<Texture2D>(width, height,format, layout, texture_flag);
 	}
-	static std::shared_ptr<Texture2D> Create(const char* filepath, TextureLayout layout = TextureLayout::LINEAR)
+	static std::shared_ptr<Texture2D> Create(const char* filepath, TextureLayout layout = TextureLayout::LINEAR, TextureFlag_ texture_flag = 0)
 	{
-		return std::make_shared<Texture2D>(filepath, layout);
+		return std::make_shared<Texture2D>(filepath, layout, texture_flag);
 	}
 
 public:
@@ -193,10 +193,9 @@ public:
 		{
 		case 3:
 		{
-			Color color;
+			TinyMath::Vector<3, uint8_t> color;
 			memcpy(&color, m_bits+index, sizeof(color));
-			color.w_ = 255;
-			return TinyMath::TransformToVec4(color);
+			return TinyMath::TransformToVec4({ color ,255});
 		}
 		case 4:
 		{

@@ -1,5 +1,5 @@
 #include"Shader.h"
-
+#include<math.h>
 
 
 
@@ -31,4 +31,10 @@ TinyMath::Vec3f Exposure(const TinyMath::Vec3f& color, float exposure)
 {
 	auto res=TinyMath::Vec3f(1.0f, 1.0f, 1.0f) - TinyMath::Exp(-color * exposure);
 	return res;
+}
+
+float CalLod(const TinyMath::Vec2f& dxdy)
+{
+	float d = std::max(dxdy.x_ * dxdy.x_, dxdy.y_ * dxdy.y_);
+	return 0.5f * std::log2(d);
 }

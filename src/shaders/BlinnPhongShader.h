@@ -36,7 +36,7 @@ public:
         return u_mvp * v.pos_;
     }
 
-    TinyMath::Vec4f FragmentShader(const Context* context) const
+    TinyMath::Vec4f FragmentShader(const Context* context, const Context delta[2]) const
     {
 
         //fragment shader
