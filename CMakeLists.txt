@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.0.0)
 project(SoftRenderer VERSION 0.1.0)
 
 
+
+
 file (GLOB_RECURSE all_files "${CMAKE_CURRENT_LIST_DIR}/src/**.h" "${CMAKE_CURRENT_LIST_DIR}/src/**.cpp")
 
 include_directories("${CMAKE_CURRENT_LIST_DIR}/3rdparty/glfw/include")
