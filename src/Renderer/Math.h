@@ -651,7 +651,7 @@ namespace TinyMath
 		//fomula: 													(0, -v[2], v[1])
 		//	R(n,angle)=cos(angle)*I+(1-cos(angle))vvT+sin(angle)	(v[2], 0, -v[0])
 		//															(-v[1],v[0] ,0 )
-		angle = angle / 180 * 3.1415926;
+		angle = angle / (T)180 * (T)3.1415926;
 		T cosa = (T)std::cos(angle);
 		T sina = (T)std::sin(angle);
 
@@ -872,12 +872,6 @@ namespace TinyMath
 			1.0f - 2.0f * xsq - 2.0f * ysq
 		};
 	}
-
-
-
-
-
-
 	
 }
 typedef TinyMath::Vec4u8i Color;

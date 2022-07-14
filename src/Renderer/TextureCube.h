@@ -14,9 +14,9 @@ public:
 
 	~TextureCube()
 	{
-		for (int i = 0; i < 6; i++)
+		for (auto tex : m_textures)
 		{
-			if (m_textures[i]) delete m_textures[i];
+			if (tex) delete tex;
 		}
 	}
 	static std::shared_ptr<TextureCube> Create(const char* filepath)

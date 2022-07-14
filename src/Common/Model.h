@@ -239,7 +239,7 @@ std::vector<TextureCompnent> Model<V>::LoadMaterialTextures(aiMaterial* mat, aiT
         }
         else
         {
-            texture.texture_ = Texture2D::Create(filename.c_str(), TextureLayout::LINEAR, SAMPLER_LINEAR | SAMPLER_REPEAT);
+            texture.texture_ = Texture2D::CreateRef(filename.c_str(), SAMPLER_LINEAR | SAMPLER_REPEAT, TextureLayout::LINEAR);
             m_textures_[filename] = texture.texture_;
         }
 

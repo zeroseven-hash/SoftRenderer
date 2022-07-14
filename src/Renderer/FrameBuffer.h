@@ -31,13 +31,13 @@ public:
 		for (int i = 0; i < specs.m_specs.size(); i++)
 		{
 			auto& spec = specs.m_specs[i];
-			Texture2D* tex = new Texture2D(width, height, spec.format_,spec.layout_, spec.flag_);
+			Texture2DHandle tex = Texture2D::CreateRef(width, height, spec.format_, spec.flag_, spec.layout_);
 			m_tex_attachments.emplace_back(tex);
 		}
 
 		if (m_depth_flag)
 		{
-			m_depth_attachment = new DepthAttachment(width, height);
+			m_depth_attachment = new DepthAttachment(width, height,TextureFormat::DEPTH32F);
 		}
 		else m_depth_attachment = nullptr;
 	}
@@ -67,11 +67,6 @@ public:
 	
 	void ClearMem()
 	{
-		for (auto tex : m_tex_attachments)
-		{
-			if (tex) delete tex;
-			tex = nullptr;
-		}
 		if (m_depth_flag) 
 		{
 			delete m_depth_attachment; 
@@ -79,7 +74,7 @@ public:
 		}
 	}
 public:
-	Texture2D* get_attachment(int index=0)
+	Texture2DHandle get_attachment(int index=0)
 	{
 		assert(index < m_tex_attachments.size());
 		return m_tex_attachments[index];
@@ -94,7 +89,7 @@ private:
 	uint32_t m_width;
 	uint32_t m_height;
 
-	std::vector<Texture2D*> m_tex_attachments;
+	std::vector<Texture2DHandle> m_tex_attachments;
 	bool m_depth_flag;
 	DepthAttachment* m_depth_attachment;
 };

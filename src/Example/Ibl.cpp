@@ -16,7 +16,7 @@ void Ibl::Init()
 	//m_skybox = TextureCube::Create("../assets/skybox/skyEnvHDR.dds");
 	m_skybox_irr = TextureCube::Create("../assets/skybox/skyDiffuseHDR.dds");
 	m_skybox_spec = TextureCube::Create("../assets/skybox/skySpecularHDR.dds");
-	m_brdf = Texture2D::Create("../assets/ibl_brdf_lut.png");
+	m_brdf = Texture2D::CreateRef("../assets/ibl_brdf_lut.png");
 
 	
 

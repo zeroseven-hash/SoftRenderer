@@ -359,7 +359,7 @@ private:
 						if (quad[i].is_in_)
 						{
 							TinyMath::Vec4f color = shader.FragmentShader(&quad[i].input_,delta);
-							m_buffer->get_attachment(0)->set_pixel(quad[i].x_, quad[i].y_, TinyMath::TransformToColor(color));
+							m_buffer->get_attachment(0)->set_pixel(quad[i].x_, quad[i].y_,color);
 						}
 					}
 				}

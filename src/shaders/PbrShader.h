@@ -46,13 +46,15 @@ public:
     {
         //set data;
         const float pi = 3.14158926f;
-       
+        float ddx = delta[0].o_coords_.x_ * m_textures[u_albedo]->get_width();
+        float ddy = delta[0].o_coords_.y_ * m_textures[u_albedo]->get_height();
+        float lod = CalLod(TinyMath::Vec2f(ddx, ddy));
 
 
-        Vec3f normal = m_textures[u_normal]->Sampler2D(context[0].o_coords_);
+        Vec3f normal = m_textures[u_normal]->Sampler2DLod(context[0].o_coords_,lod);
         normal = normal * 2.0f - Vec3f(1.0f, 1.0f, 1.0f);
-        Vec3f albedo = ToLinear(m_textures[u_albedo]->Sampler2D(context[0].o_coords_));
-        Vec3f metallic_roughness = m_textures[u_metalness_roughness]->Sampler2D(context[0].o_coords_);
+        Vec3f albedo = ToLinear(m_textures[u_albedo]->Sampler2DLod(context[0].o_coords_,lod));
+        Vec3f metallic_roughness = m_textures[u_metalness_roughness]->Sampler2DLod(context[0].o_coords_,lod);
         float metallic = metallic_roughness.b_;
         float roughness = metallic_roughness.g_;
         static Mat3f TBN;

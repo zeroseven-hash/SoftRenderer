@@ -27,5 +27,5 @@ private:
 	std::shared_ptr<Model<>> m_sphere;
 	IblShader<> m_ibl_shader;
 	SkyBoxShader<> m_cube_shader;
-	std::shared_ptr<Texture2D> m_brdf;
+	Texture2DHandle m_brdf;
 };
